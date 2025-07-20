@@ -1,0 +1,67 @@
+{
+    ////////////////////////////////////////////////////////////////////////////
+    // Editor-Grundeinstellungen / Basic Editor Preferences
+    ////////////////////////////////////////////////////////////////////////////
+
+    "editor.tabSize": 4,                         // Standard: 4 Leerzeichen / 4-space indentation
+    "editor.insertSpaces": true,                 // Verwende Leerzeichen anstelle von Tabs / Use spaces instead of tabs
+    "editor.detectIndentation": false,           // Automatische Tab-Breite ignorieren / Don't auto-detect indentation
+    "files.insertFinalNewline": true,            // Neue Zeile am Dateiende einfügen / Insert final newline
+    "files.trimTrailingWhitespace": true,        // Leerzeichen am Zeilenende entfernen / Trim trailing spaces
+    "files.eol": "\n",                           // Linux-Zeilenenden (LF) / Use Unix-style line endings
+    "editor.rulers": [120],                      // Hilfslinie bei Spalte 120 / Visual guide at 120 chars
+    "editor.wordWrap": "off",                    // Kein automatischer Zeilenumbruch / Disable word wrap
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Bash/Shell-spezifische Formatierung / Bash-specific Formatting
+    ////////////////////////////////////////////////////////////////////////////
+
+    "[shellscript]": {
+        "editor.formatOnSave": true,             // Automatisch bei Speichern formatieren / Format on save
+        "editor.defaultFormatter": "foxundermoon.shell-format" // Empfohlener Formatter / Recommended shell formatter
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Datei-Erweiterungen als Shell erkennen / File type associations
+    ////////////////////////////////////////////////////////////////////////////
+
+    "files.associations": {
+        "*.func": "shellscript"                  // *.func als Shellskripte behandeln / Treat *.func as shell scripts
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // ShellCheck & Shell-Format Konfiguration / Linter & Formatter config
+    ////////////////////////////////////////////////////////////////////////////
+
+    "shellcheck.enable": true,                   // ShellCheck aktivieren / Enable ShellCheck
+    "shellcheck.run": "onSave",                  // Linting beim Speichern / Run on save
+    "shellcheck.severity": "warning",            // Warnlevel: warning (oder info/error)
+    "shellcheck.arguments": [
+        "-x"                                     // Externe 'source'-Dateien mitprüfen / Follow sourced files
+    ],
+
+    "shellformat.flag": [
+        "-i", "4",                               // Einrückung: 4 Leerzeichen / 4-space indentation
+        "-ci"                                    // Korrekte Formatierung für if/case / Indent control blocks
+    ],
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Erweiterungsvorschläge / Extension Recommendations
+    ////////////////////////////////////////////////////////////////////////////
+
+    "extensions.ignoreRecommendations": false,
+    "extensions.recommendations": [
+        "foxundermoon.shell-format",             // Shellcode-Formatter
+        "timonwong.shellcheck",                  // ShellCheck für Bash-Linting
+        "streetsidesoftware.code-spell-checker"  // Rechtschreibprüfung (Markdown, Kommentare etc.)
+    ],
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Terminalkonfiguration / Integrated Terminal Setup
+    ////////////////////////////////////////////////////////////////////////////
+
+    "terminal.integrated.defaultProfile.windows": "Git Bash", // Git Bash als Default-Terminal unter Windows
+    "terminal.integrated.allowMnemonics": false,              // Kein ALT-Menüzugriff via Tastatur in Terminal
+    "editor.fontFamily": "Fira Code, 'Courier New', monospace", // Fest definierte Schriftarten
+    "editor.fontLigatures": false                             // Keine Ligaturen (z. B. für Emojis)
+}

@@ -3,20 +3,30 @@
 # system.func – Systempflege und Konfiguration im LXC-Container
 # Version:    2.7.5
 # Datum:      2025-07-21
-# Beschreibung:
-#   Locale, Zeitzone und Betriebssystem-Updates im Container.
+#
+# Beschreibung (Deutsch):
+# Diese Datei enthält Funktionen zur Systemkonfiguration innerhalb eines
+# LXC-Containers nach dessen Erstellung. Dazu gehören Locale-, Zeitzonen- und
+# APT-Update-Prozesse.
+#
+# Description (English):
+# This file provides post-creation system configuration steps for LXC containers,
+# such as setting locales and timezone, and running APT updates.
+#
 ###############################################################################
 
 ### Locales und Zeitzone im Container setzen
-### Configure locales and timezone in the container
+### Configure system locales and timezone in the container
 configure_locales() {
     log "${MSG[locales]}"
     log "${MSG[timezone]}"
+
     if pct exec "$CT_ID" -- apt-get install -y -qq locales tzdata &&
        pct exec "$CT_ID" -- bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; echo 'de_DE.UTF-8 UTF-8' >> /etc/locale.gen; locale-gen" &&
        pct exec "$CT_ID" -- update-locale LANG=de_DE.UTF-8 &&
        pct exec "$CT_ID" -- ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime &&
-       pct exec "$CT_ID" -- bash -c 'echo "Europe/Berlin" > /etc/timezone'; then
+       pct exec "$CT_ID" -- bash -c 'echo "Europe/Berlin" > /etc/timezone'
+    then
         log_success "${MSG[locales_ok]}"
         log_success "${MSG[timezone_ok]}"
     else
@@ -26,17 +36,19 @@ configure_locales() {
     fi
 }
 
-### Container-System per APT aktualisieren
-### Run apt update/upgrade/clean in the container
+### APT-Update im Container durchführen
+### Run apt update/upgrade/autoremove/clean in the container
 update_container() {
     log "${MSG[update]}"
+
     if pct exec "$CT_ID" -- bash -c '
-        DEBIAN_FRONTEND=noninteractive
+        export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq &&
         apt-get upgrade -y -qq &&
         apt-get autoremove -y -qq &&
         apt-get clean -qq
-    '; then
+    '
+    then
         log_success "${MSG[update_ok]}"
     else
         log_error "${MSG[update_fail]}"

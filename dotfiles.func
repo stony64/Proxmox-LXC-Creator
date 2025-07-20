@@ -3,17 +3,27 @@
 # dotfiles.func – Dotfiles-Integration für Proxmox LXC-Container
 # Version:    2.7.5
 # Datum:      2025-07-21
-# Beschreibung:
-#   Klont oder aktualisiert ein Dotfiles-GitHub-Repository im Container.
+#
+# Beschreibung (Deutsch):
+# Diese Funktion klont oder aktualisiert ein Dotfiles-Repository im LXC-Container.
+# Es wird sichergestellt, dass Git installiert ist, und vorhandene Dotfiles
+# werden per git pull aktualisiert.
+#
+# Description (English):
+# This function clones or updates a Dotfiles GitHub repository inside the LXC container.
+# Ensures Git is installed and existing dotfiles are updated via git pull.
+#
 ###############################################################################
 
-### Dotfiles aus GitHub im Container klonen oder aktualisieren
+### Klone oder aktualisiere Dotfiles im Container
 ### Clone or update dotfiles repository inside the container
 clone_dotfiles_in_container() {
     log "${MSG[dotfiles]}"
+
     if pct exec "$CT_ID" -- bash -eu <<'EOF'
 apt-get update -qq
 apt-get install -y -qq git
+
 if [ ! -d /root/dotfiles/.git ]; then
     git clone https://github.com/stony64/dotfiles.git /root/dotfiles
 else

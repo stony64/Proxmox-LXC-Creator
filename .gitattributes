@@ -1,10 +1,63 @@
-# Immer unix-artige Zeilenenden für Skripte
-*.sh      text eol=lf
-*.func    text eol=lf
+###############################################################################
+# .gitattributes – Proxmox LXC Creator (DE/EN)
+#
+# Zweck / Purpose:
+# - Einheitliche Zeilenenden (LF) für Scripts, Markdown, Configs
+# - Vermeidung von CRLF-Problemen in Shellskripten unter Linux
+# - Klar definierte Behandlung von Binärdateien
+###############################################################################
 
-# Auch für Markdown und Konfigs sinnvoll
-*.md      text eol=lf
-*.json    text eol=lf
+###############################################################################
+# 1. Scriptdateien – Unix-Zeilenenden (LF)
+# Shell scripts – Always use LF endings (critical for bash/Proxmox)
+###############################################################################
 
-# Standard: text=auto für alle übrigen Textdateien
-*         text=auto
+*.sh       text eol=lf
+*.func     text eol=lf
+
+###############################################################################
+# 2. Markdown & Konfigurationsformate – LF
+# Markdown and config files – LF for consistency across platforms
+###############################################################################
+
+*.md       text eol=lf
+*.json     text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.env      text eol=lf
+*.sample   text eol=lf
+
+###############################################################################
+# 3. Editor- & Projektdateien – LF
+# Editor & workspace config – treated as text
+###############################################################################
+
+.editorconfig      text eol=lf
+.gitattributes     text eol=lf
+.gitignore         text eol=lf
+.vscode/*          text eol=lf
+*.code-workspace   text eol=lf
+
+###############################################################################
+# 4. Standard-Regel (Fallback)
+# Default rule for text files not explicitly listed above
+###############################################################################
+
+*          text=auto
+
+###############################################################################
+# 5. Binärdateien – nie konvertieren
+# Binary files – never normalize!
+###############################################################################
+
+*.ico      binary
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.pdf      binary
+*.zip      binary
+*.gz       binary
+*.zst      binary
+*.xz       binary
+*.tar      binary
+*.tar.gz   binary

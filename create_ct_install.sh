@@ -1,83 +1,86 @@
 #!/usr/bin/env bash
 ###############################################################################
-# Proxmox LXC Container Creator – Hauptskript
+# Proxmox LXC Container Creator – Hauptskript / Main Script
 # Version:    2.7.5
-# Datum:      2025-07-20
+# Datum:      2025-07-21
 #
-# Beschreibung:
-#   Steuert modular die automatisierte Erstellung und Konfiguration von
-#   Proxmox-LXC-Containern:
-#     - Mehrsprachiges TUI (whiptail) via translation.func
-#     - Logging & sichere Fehlerbehandlung
-#     - Statische/reservierte IP-Vergabe mit Validierung
-#     - SSH-Key-Integration
-#     - Dotfiles-GitHub-Synchronisation
-#     - Lokalisierung, Zeitzone & Systemupdate
-#     - Vollständige CLI-Parameter-Unterstützung (z. B. --hostname)
-#     - Abschlusszusammenfassung der relevanten Containerdaten
+# Beschreibung (Deutsch):
+# Dieses Skript automatisiert die Erstellung und Konfiguration von LXC-
+# Containern auf einem Proxmox-Host. Es lädt modular externe Funktionen
+# (*.func), nutzt whiptail für interaktive Eingaben und enthält Schritte zur
+# Netzwerkkonfiguration, Passwortvergabe, SSH-Key-Setup und Systempflege.
 #
-#   Funktionen und Logik sind in *.func-Dateien modularisiert für Wartbarkeit.
+# Description (English):
+# This script automates the creation and configuration of LXC containers on a
+# Proxmox host. It sources modular function files (*.func), uses whiptail for
+# interactive input and covers network setup, password management, SSH key
+# integration, and system updates.
 #
 ###############################################################################
 
+# Exit bei Fehler, nicht gesetzten Variablen oder Pipefehler
 set -euo pipefail
-trap 'log_error "FEHLER in Zeile $LINENO"; exit 2' ERR
+trap 'log_error "FEHLER in Zeile $LINENO / ERROR at line $LINENO"; exit 2' ERR
 
 ################################################################################
-# 1 – Konfiguration & globale Variablen
+# 1 – Globale Einstellungen / Global configuration
 ################################################################################
 
 readonly STORAGE="FP1000GB"
 readonly TEMPLATE_PATH="/mnt/FP1000GB/template/cache"
-readonly LOGFILE="/opt/scripts/proxmox/lxc_create_$(date +'%Y%m%d_%H%M%S').log"
+
+# shellcheck disable=SC2034
+LOGFILE="/opt/scripts/proxmox/lxc_create_$(date +'%Y%m%d_%H%M%S').log"
+readonly LOGFILE
+
 readonly NET_BRIDGE="vmbr2"
 readonly BASE_IPV4="192.168.10."
 readonly BASE_IPV6="fd00:1234:abcd:10::"
 readonly GATEWAY_IPV4="192.168.10.1"
 readonly GATEWAY_IPV6="fd00:1234:abcd:10:3ea6:2fff:fe65:8fa7"
 
-# Diese Variablen werden im Ablauf überschrieben/gesetzt:
+# Laufzeitvariablen / Runtime variables
 CT_ID="" CT_HOSTNAME="" CT_PASSWORD="" CT_CORES="" CT_MEMORY="" ROOTFS_SIZE=""
 TEMPLATE_FILE="" OSTEMPLATE="" OSType="" SSH_PUBKEY="" LAPTOP_KEY_COMMENT=""
 CT_IPV4="" CT_IPV6="" PARAM_HOSTNAME=""
 
 ################################################################################
-# 2 – Laden aller Funktionsmodule (modular, wartbar)
+# 2 – Funktionsmodule laden / Load function modules
 ################################################################################
 
-# [Deutsch/Englisch] Sprachsystem laden (als erstes!)
+# shellcheck source=./translation.func
 source "$(dirname "$0")/translation.func"
 load_translations
 
-# Logging
+# shellcheck source=./logging.func
 source "$(dirname "$0")/logging.func"
 
-# CLI-Parameter-Verarbeitung (z. B. --hostname)
+# shellcheck source=./cli.func
 source "$(dirname "$0")/cli.func"
 
-# Interaktive Benutzereingaben (Hostname, Passwort, Template usw.)
+# shellcheck source=./input.func
 source "$(dirname "$0")/input.func"
 
-# Netzwerk: IP-Abfrage, Oktett-Validierung
+# shellcheck source=./network.func
 source "$(dirname "$0")/network.func"
 
-# SSH-Kommentar, Key-Operationen
+# shellcheck source=./ssh.func
 source "$(dirname "$0")/ssh.func"
 
-# Erstellung und Start (pct create/start, Tags setzen)
+# shellcheck source=./container.func
 source "$(dirname "$0")/container.func"
 
-# Systempflege: Locales, Zeitzone, apt-Update
+# shellcheck source=./system.func
 source "$(dirname "$0")/system.func"
 
-# Dotfiles aus GitHub klonen/pullen
+# shellcheck source=./dotfiles.func
 source "$(dirname "$0")/dotfiles.func"
 
-# Abschluss: Zusammenfassung der Containerdaten
+# shellcheck source=./summary.func
 source "$(dirname "$0")/summary.func"
 
 ################################################################################
-# 3 – Hauptlogik: Modularer Workflow
+# 3 – Hauptablauf / Main workflow
 ################################################################################
 
 main() {
@@ -97,7 +100,7 @@ main() {
     ask_for_laptop_key_comment
     extract_laptop_key
 
-    # Dry-Run ggf. frühzeitig beenden
+    # Dry-Run? Dann Vorschau anzeigen und beenden
     [[ "${1:-}" == "--dry-run" ]] && dry_run_preview
 
     prepare_ssh_key_prestart

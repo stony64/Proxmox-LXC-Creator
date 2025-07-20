@@ -3,14 +3,29 @@
 # container.func – Container-Erstellung für Proxmox LXC
 # Version:    2.7.5
 # Datum:      2025-07-21
-# Beschreibung:
-#   Erzeugt und konfiguriert LXC-Container im Ablauf.
+#
+# Beschreibung (Deutsch):
+# Diese Datei enthält die Funktion zur Erstellung eines LXC-Containers mit pct.
+# Sie nutzt die vorbereiteten Werte aus den vorherigen Eingaben und übernimmt
+# die vollständige Erstellung, Konfiguration, Start und Tagging des Containers.
+#
+# Description (English):
+# This file contains the function for creating an LXC container using pct.
+# It consumes preconfigured global variables and executes creation, configuration,
+# automated startup and tagging of the container.
+#
 ###############################################################################
 
 ### LXC-Container erstellen und starten
 ### Create and start LXC container
 create_container() {
     log "${MSG[creating]}"
+
+    # Sicherstellen, dass notwendige Variablen gesetzt sind
+    if [[ -z "${OSType:-}" ]]; then
+        exit_with_log "Fehler: OSType ist nicht gesetzt. Funktion detect_ostype_from_template() muss vorher laufen."
+    fi
+
     pct create "$CT_ID" "$OSTEMPLATE" \
         --hostname "$CT_HOSTNAME" \
         --arch amd64 \
@@ -24,9 +39,12 @@ create_container() {
         --password "$CT_PASSWORD" \
         --ostype "$OSType" \
         --description "Erstellt am $(date '+%d.%m.%Y %H:%M:%S')"
+
     log_success "${MSG[created]} (CT-ID: $CT_ID)"
+
     pct start "$CT_ID"
     log_success "${MSG[started]} (CT-ID: $CT_ID)"
+
     pct set "$CT_ID" --tags "$OSType"
     log "Tag gesetzt: $OSType"
 }

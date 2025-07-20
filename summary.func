@@ -3,19 +3,26 @@
 # summary.func – Abschlussanzeige / Containerdaten
 # Version:    2.7.5
 # Datum:      2025-07-21
-# Beschreibung:
-#   Zeigt nach Erstellung/Aktualisierung die wichtigsten Containerdaten an.
+#
+# Beschreibung (Deutsch):
+# Diese Datei zeigt nach Abschluss der Container-Erstellung die wichtigsten
+# Parameter in strukturierter Form zur sofortigen Übersicht an.
+#
+# Description (English):
+# This module prints a structured summary of all relevant container values
+# after successful creation and configuration — for CLI and documentation.
+#
 ###############################################################################
 
-### Übersicht zum Container in der Konsole anzeigen
-### Print container summary to the console
+### Übersicht zum erstellten Container ausgeben
+### Print summary of the created container
 print_summary() {
     echo
     echo "Container erfolgreich erstellt"
     echo "----------------------------------------"
     echo "CT-ID:          $CT_ID"
     echo "Hostname:       $CT_HOSTNAME"
-    echo "OS-Typ:         $OSType"
+    echo "OS-Typ:         ${OSType:-<nicht gesetzt>}"     # shellcheck disable=SC2154
     echo "Template:       $TEMPLATE_FILE"
     echo "CPU-Kerne:      $CT_CORES"
     echo "RAM:            ${CT_MEMORY} MB"
@@ -25,6 +32,6 @@ print_summary() {
     echo "IPv6-Adresse:   ${CT_IPV6}"
     echo "IPv6-Gateway:   ${GATEWAY_IPV6}"
     echo "----------------------------------------"
-    echo "Zugriff: pct enter $CT_ID oder ssh root@${CT_IPV4}"
+    echo "Zugriff: pct enter $CT_ID  oder  ssh root@${CT_IPV4}"
     echo
 }

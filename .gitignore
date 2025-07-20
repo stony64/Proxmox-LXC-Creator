@@ -1,24 +1,56 @@
-# Shell Bash 
+###############################################################################
+# .gitignore – Proxmox LXC Creator
+# DE: Ignoriere temporäre, sensible und editor-/systembezogene Dateien
+# EN: Ignore temporary, sensitive, editor- and system-related files
+###############################################################################
 
-# BACKUP-Dir
-.BACKUP/
+###############################################################################
+# Shell / Bash: Backup- und temporäre Dateien
+# Shell / Bash: Backup and temp files
+###############################################################################
 
-# Logs und temporäre Dateien
-*.log
-*.bak
-*.tmp
-*.swp
+*.log              # Log-Dateien / Log files
+*.bak              # Temporäre Backups / Temporary backups
+*.tmp              # Temporärer Inhalt / Temporary files
+*.swp              # Vim-Swapdateien / Vim swap files
+*~                 # Bash-Backup (automatisch) / Editor backup (~)
+*.sh~              # Backup-Versionen von .sh-Dateien / .sh backups
 
-# Backup-Dateien von Bash-Skripten
-*~
-*.sh~
+###############################################################################
+# Projektspezifische Verzeichnisse (Backups usw.)
+# Project-specific directories (e.g. own backups)
+###############################################################################
 
-# Editor-Dateien
-*.vscode
-*.idea
+.BACKUP/           # Lokales Backup-Verzeichnis / Local backup folder
 
+###############################################################################
+# Entwicklungsumgebung / Editorverzeichnisse
+# Editor folders: VS Code, JetBrains (IDEA, WebStorm, etc.)
+###############################################################################
+
+.vscode/           # VS Code settings (lokal) / Local settings folder
+.idea/             # JetBrains IDE-Projekteinstellungen / IDEA config
+
+###############################################################################
 # Systemdateien
-.DS_Store
+# System-specific files (OS integrated)
+###############################################################################
 
-# Sonstige
-.env
+.DS_Store          # macOS-Dateien / macOS Finder metadata
+
+###############################################################################
+# Umgebungsdateien (nicht ins Git!)
+# Environment files (do not commit these!)
+###############################################################################
+
+.env               # Umgebungsvariablen / Environment variables
+.env.*.local       # Lokale Varianten / Local env variants
+
+###############################################################################
+# Erweiterbar: Eigene Test-, Cache- oder Builddateien
+# Extendable: Add your own test/cache/build ignore rules below
+###############################################################################
+
+# /tmp/
+# /dist/
+# /node_modules/

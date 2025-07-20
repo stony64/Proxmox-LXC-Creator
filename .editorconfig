@@ -1,15 +1,65 @@
+# Root-Verzeichnis für EditorConfig – alle Regeln gelten ab hier
+# Root directory for EditorConfig – all rules apply from here
 root = true
 
+###############################################################################
+# Shellskripte / Shell scripts (*.sh)
+# - 4 Leerzeichen (kein Tab!)
+# - LF-Zeilenende (Linux-kompatibel)
+###############################################################################
+
 [*.sh]
-indent_style = space
-indent_size = 4
-end_of_line = lf
+indent_style = space                  # Verwende Leerzeichen statt Tabs / Use spaces instead of tabs
+indent_size = 4                       # Einrückung: 4 Leerzeichen / 4-space indentation
+end_of_line = lf                      # Linux-Zeilenende / UNIX line endings
 insert_final_newline = true
+trim_trailing_whitespace = true
 charset = utf-8
 
-[*.{md,json,func}]
+###############################################################################
+# Funktionsmodule, Markdown & JSON
+# Functions (*.func), Markdown (*.md), JSON (*.json)
+# - 2 Leerzeichen für Lesbarkeit
+###############################################################################
+
+[*.{func,md,json}]
+indent_style = space
+indent_size = 2                       # 2 Leerzeichen für strukturierte Dateien / Common for structured data
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+charset = utf-8
+
+###############################################################################
+# YAML-Dateien (z. B. GitHub Actions / CI/CD)
+# YAML configuration files
+###############################################################################
+
+[*.{yml,yaml}]
 indent_style = space
 indent_size = 2
 end_of_line = lf
 insert_final_newline = true
+trim_trailing_whitespace = true
 charset = utf-8
+
+###############################################################################
+# Projektkonfigurationen (Editor & workspace configs)
+###############################################################################
+
+[.editorconfig]
+indent_style = space
+indent_size = 2
+
+[.vscode/settings.json]
+indent_style = space
+indent_size = 2
+
+###############################################################################
+# Ausnahmen / Sonderformate (z. B. Logdateien)
+# Exceptions (e.g. logs with preserved line endings and spacing)
+###############################################################################
+
+[*.log]
+insert_final_newline = false
+trim_trailing_whitespace = false

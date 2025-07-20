@@ -3,13 +3,19 @@
 # input.func – Interaktive Benutzereingaben
 # Version:    2.7.5
 # Datum:      2025-07-21
-# Beschreibung:
-#   Behandelt alle Eingaben wie Hostname, Passwort, Template-Auswahl,
-#   Ressourcen und bestätigt / validiert alle Daten via whiptail-TUI.
+#
+# Beschreibung (Deutsch):
+# Diese Datei behandelt die interaktive Benutzerführung mittels whiptail.
+# Funktionen: Auswahl von Hostname, Passwort, Template, RootFS-Größe, CPU & RAM.
+#
+# Description (English):
+# This module handles interactive prompts using whiptail, including validation.
+# Functions: Input for hostname, password, template, rootfs size, CPU and RAM.
+#
 ###############################################################################
 
-### Hostname interaktiv abfragen oder übergebenen übernehmen
-### Prompt for hostname or use CLI-Provided PARAM_HOSTNAME
+### Hostname interaktiv abfragen oder CLI-Wert übernehmen
+### Prompt for hostname or accept --hostname argument
 input_hostname() {
     if [[ -n "$PARAM_HOSTNAME" ]]; then
         CT_HOSTNAME="$PARAM_HOSTNAME"
@@ -26,7 +32,7 @@ input_hostname() {
             continue
         fi
 
-        # Hostname-Validierung: RFC-konforme Namen zulassen
+        # Hostname-Validierung: RFC-konforme Zeichen
         if [[ "$CT_HOSTNAME" =~ ^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$ ]]; then
             break
         else
@@ -37,8 +43,8 @@ input_hostname() {
     log "${MSG[hostname]} $CT_HOSTNAME"
 }
 
-### Passwort sicher erfassen (min. 8 Zeichen, Pflicht)
-### Prompt for root password, validate length
+### Passwort sicher erfassen (min. 8 Zeichen)
+### Prompt for root password with minimum validation
 input_password() {
     while true; do
         CT_PASSWORD=$(whiptail --title "$(dialog_title Passwort)" \
@@ -55,11 +61,11 @@ input_password() {
 }
 
 ### Templates im Verzeichnis anzeigen und Auswahl ermöglichen
-### Select template file from TEMPLATE_PATH via whiptail
+### Display template files and let user select one
 select_template() {
     log "${MSG[template_select]} $TEMPLATE_PATH"
 
-    # Sicherer Dateilisting ohne glob-Probleme
+    # Dateiauswahl absichern (keine Globbing-Probleme)
     mapfile -t templates < <(find "$TEMPLATE_PATH" -maxdepth 1 -type f -name '*-standard_*.tar.zst' | sort)
 
     [[ ${#templates[@]} -eq 0 ]] && exit_with_log "${MSG[template_none]}"
@@ -73,21 +79,21 @@ select_template() {
     TEMPLATE_FILE=$(whiptail --title "$(dialog_title Template)" \
         --menu "${MSG[template_select]}" 20 70 10 "${menu_items[@]}" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
 
-    OSTEMPLATE="${TEMPLATE_PATH}/${TEMPLATE_FILE}"  # wird später von create_container() verwendet
+    OSTEMPLATE="${TEMPLATE_PATH}/${TEMPLATE_FILE}"
     export OSTEMPLATE
 
     log "${MSG[template_chosen]} $TEMPLATE_FILE"
 }
 
-### Rootdaten konfigurieren (Größe in GB)
-### Ask for RootFS size (with integer validation)
+### RootFS-Größe interaktiv abfragen (in GB)
+### Prompt for root filesystem size in GB
 input_rootfs_size() {
     ROOTFS_SIZE=$(request_positive_integer "${MSG[rootfs]}" "2") || exit_with_log "${MSG[abort]}"
     log "${MSG[rootfs]}: $ROOTFS_SIZE GB"
 }
 
-### CPU-/RAM-Werte erfassen (optional durch Parameter erweiterbar)
-### Prompt for cores and memory
+### CPU-/RAM-Ressourcen interaktiv festlegen
+### Prompt for CPU cores and memory allocation
 input_resources() {
     CT_CORES=$(request_positive_integer "${MSG[cores]}" "1") || exit_with_log "${MSG[abort]}"
     CT_MEMORY=$(request_positive_integer "${MSG[memory]}" "512") || exit_with_log "${MSG[abort]}"

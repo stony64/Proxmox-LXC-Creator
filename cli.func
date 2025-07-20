@@ -3,18 +3,31 @@
 # cli.func – CLI-Parameterverarbeitung für Proxmox LXC-Ersteller
 # Version:    2.7.5
 # Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Diese Datei enthält Funktionen zur Verarbeitung von Kommandozeilenargumenten
+# für das Hauptskript 'create_ct_install.sh'. Unterstützt aktuell z. B.:
+#   --hostname   Übergabe eines Hostnamens zur automatischen Vorkonfiguration
+#
+# Description (English):
+# This file provides CLI argument parsing functions for use in the main
+# script 'create_ct_install.sh'. Currently supported parameters include:
+#   --hostname   Passes a hostname value for preconfiguration
+#
 ###############################################################################
 
-### [EN] Parse CLI parameters (e.g. --hostname)
-### [DE] Kommandozeilenargumente parsen
+### Kommandozeilenargumente verarbeiten (z. B. --hostname)
+### Parse CLI parameters (e.g. --hostname)
 parse_args() {
-    local arg
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --hostname)
                 shift
                 PARAM_HOSTNAME="$1"
                 log "Hostname übergeben: $PARAM_HOSTNAME"
+                ;;
+            *)
+                log "Unbekannter Parameter: $1"
                 ;;
         esac
         shift

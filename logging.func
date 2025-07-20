@@ -3,22 +3,38 @@
 # logging.func – Zentrale Logging-Funktionen für Proxmox LXC-Ersteller
 # Version:    2.7.5
 # Datum:      2025-07-21
-# Beschreibung:
-#   Konsistente Protokollierung von Ausgaben, Fehlern und Abbrüchen.
+#
+# Beschreibung (Deutsch):
+# Diese Datei stellt zentrale Logging-Funktionen für das Skript bereit.
+# Protokolle werden sowohl im Terminal als auch in der LOGDATEI ausgegeben.
+#
+# Description (English):
+# This file provides central logging functions for the Proxmox LXC creator.
+# Output is written both to the console and to the log file defined in $LOGFILE.
+#
 ###############################################################################
 
-### [EN] Log line to stdout and file
-### [DE] Ausgabe in Konsole und Logdatei schreiben
-log()         { echo "[INFO] $1" | tee -a "$LOGFILE"; }
+### Ausgabe in Konsole und Logdatei schreiben
+### Log line to stdout and log file
+log() {
+    echo "[INFO] $1" | tee -a "$LOGFILE"
+}
 
-### [EN] Successful operation
-### [DE] Erfolgreiche Aktion loggen
-log_success() { echo "[OK]   $1" | tee -a "$LOGFILE"; }
+### Erfolgreiche Aktion loggen
+### Log successful operation
+log_success() {
+    echo "[OK]   $1" | tee -a "$LOGFILE"
+}
 
-### [EN] Log error and show to stderr
-### [DE] Fehlerhafte Aktion loggen
-log_error()   { echo "[ERROR] $1" | tee -a "$LOGFILE"; }
+### Fehlerhafte Aktion loggen
+### Log error to console and file
+log_error() {
+    echo "[ERROR] $1" | tee -a "$LOGFILE"
+}
 
-### [EN] Exit script with error log and status code
-### [DE] Skript mit Fehler abbrechen
-exit_with_log() { log_error "$1"; exit 1; }
+### Skript mit Fehlerstatus abbrechen
+### Exit script with error message
+exit_with_log() {
+    log_error "$1"
+    exit 1
+}
