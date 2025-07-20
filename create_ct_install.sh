@@ -75,6 +75,7 @@ main() {
     check_root
     log "check root abgeschlossen"
     check_bash_version
+    log "BASH_VERSINFO: ${BASH_VERSINFO[@]:-(leer)}"
     log "check_bash_version abgeschlossen"
     check_required_tools
     log "check_required_tools abgeschlossen"
