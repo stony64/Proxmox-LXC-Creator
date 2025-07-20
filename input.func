@@ -5,20 +5,30 @@
 # Datum:      2025-07-21
 ###############################################################################
 
-### Hostname eingeben oder übernehmen
+### Hostname validieren und interaktiv abfragen
 input_hostname() {
     if [[ -n "$PARAM_HOSTNAME" ]]; then
         CT_HOSTNAME="$PARAM_HOSTNAME"
         log "Verwende übergebenen Hostname: $CT_HOSTNAME"
         return
     fi
+
     while true; do
         CT_HOSTNAME=$(whiptail --title "$(dialog_title Hostname)" \
             --inputbox "${MSG[hostname]}" 10 60 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
-        [[ -z "$CT_HOSTNAME" ]] && { whiptail --msgbox "${MSG[input_empty]}" 8 60; continue; }
-        [[ "$CT_HOSTNAME" =~ ^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$" ]] && break
-        whiptail --msgbox "${MSG[input_invalid]}" 8 60
+
+        [[ -z "$CT_HOSTNAME" ]] && {
+            whiptail --msgbox "${MSG[input_empty]}" 8 60
+            continue
+        }
+
+        if [[ "$CT_HOSTNAME" =~ ^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$ ]]; then
+            break
+        else
+            whiptail --msgbox "${MSG[input_invalid]}" 8 60
+        fi
     done
+
     log "${MSG[hostname]} $CT_HOSTNAME"
 }
 
