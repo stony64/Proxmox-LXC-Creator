@@ -16,43 +16,37 @@
 ### Ensure script is executed as root
 check_root() {
     if [[ "$EUID" -ne 0 ]]; then
-        echo "[ERROR] Dieses Skript muss als root ausgeführt werden."
-        echo "[ERROR] This script must be run as root."
+        log_error "Dieses Skript muss als root ausgeführt werden."
+        log_error "This script must be run as root."
         exit 1
     fi
 }
 
-### Bash-Version prüfen (mindestens 4.0 erforderlich)
-### Check bash version (must be >= 4.0)
 check_bash_version() {
     local bash_major="${BASH_VERSINFO[0]}"
     local bash_minor="${BASH_VERSINFO[1]}"
     if (( bash_major < 4 )); then
-        echo "[ERROR] Bash-Version $bash_major.$bash_minor zu alt – mindestens 4.0 erforderlich."
+        log_error "Bash-Version $bash_major.$bash_minor zu alt – mindestens 4.0 erforderlich."
         exit 1
     fi
 }
 
-### Existenz von Kommandozeilentools prüfen
-### Check presence of required CLI tools
 check_required_tools() {
     local tools=("whiptail" "pct" "git")
     for tool in "${tools[@]}"; do
         if ! command -v "$tool" &>/dev/null; then
-            echo "[ERROR] Benötigtes Tool '$tool' fehlt."
-            echo "[ERROR] Required tool '$tool' is missing."
+            log_error "Benötigtes Tool '$tool' fehlt."
+            log_error "Required tool '$tool' is missing."
             exit 1
         fi
     done
 }
 
-### Prüft, ob ein angegebenes Verzeichnis existiert, sonst Abbruch
-### Checks if a given directory exists, invokes exit if not found
 check_directory_exists() {
     local dirpath="$1"
     if [[ ! -d "$dirpath" ]]; then
-        echo "[ERROR] Verzeichnis nicht gefunden: $dirpath"
-        echo "[ERROR] Directory not found: $dirpath"
+        log_error "Verzeichnis nicht gefunden: $dirpath"
+        log_error "Directory not found: $dirpath"
         exit 1
     fi
 }

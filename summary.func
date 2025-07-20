@@ -18,20 +18,40 @@
 ### Prints container summary to console after creation
 print_summary() {
     echo
-    echo "Container erfolgreich erstellt"
-    echo "----------------------------------------"
-    echo "CT-ID:          $CT_ID"
-    echo "Hostname:       $CT_HOSTNAME"
-    echo "OS-Typ:         ${OSType:-<nicht gesetzt>}"     # shellcheck disable=SC2154
-    echo "Template:       $TEMPLATE_FILE"
-    echo "CPU-Kerne:      $CT_CORES"
-    echo "RAM:            ${CT_MEMORY} MB"
-    echo "RootFS:         ${ROOTFS_SIZE} GB"
-    echo "IPv4-Adresse:   ${CT_IPV4}"
-    echo "IPv4-Gateway:   ${GATEWAY_IPV4}"
-    echo "IPv6-Adresse:   ${CT_IPV6}"
-    echo "IPv6-Gateway:   ${GATEWAY_IPV6}"
-    echo "----------------------------------------"
-    echo "Zugriff: pct enter $CT_ID  oder  ssh root@${CT_IPV4}"
-    echo
+    # Mehrsprachige Überschrift
+    if [[ "${LANGCODE:-de}" == "en" ]]; then
+        echo "Container created successfully"
+        echo "----------------------------------------"
+        echo "CT ID:          ${CT_ID:-<not set>}"
+        echo "Hostname:       ${CT_HOSTNAME:-<not set>}"
+        echo "OS type:        ${OSType:-<not set>}"
+        echo "Template:       ${TEMPLATE_FILE:-<not set>}"
+        echo "CPU cores:      ${CT_CORES:-<not set>}"
+        echo "RAM:            ${CT_MEMORY:-<not set>} MB"
+        echo "RootFS:         ${ROOTFS_SIZE:-<not set>} GB"
+        echo "IPv4 address:   ${CT_IPV4:-<not set>}"
+        echo "IPv4 gateway:   ${GATEWAY_IPV4:-<not set>}"
+        echo "IPv6 address:   ${CT_IPV6:-<not set>}"
+        echo "IPv6 gateway:   ${GATEWAY_IPV6:-<not set>}"
+        echo "----------------------------------------"
+        echo "Access: pct enter ${CT_ID:-<not set>}  or  ssh root@${CT_IPV4:-<not set>}"
+        echo
+    else
+        echo "Container erfolgreich erstellt"
+        echo "----------------------------------------"
+        echo "CT-ID:          ${CT_ID:-<nicht gesetzt>}"
+        echo "Hostname:       ${CT_HOSTNAME:-<nicht gesetzt>}"
+        echo "OS-Typ:         ${OSType:-<nicht gesetzt>}"
+        echo "Template:       ${TEMPLATE_FILE:-<nicht gesetzt>}"
+        echo "CPU-Kerne:      ${CT_CORES:-<nicht gesetzt>}"
+        echo "RAM:            ${CT_MEMORY:-<nicht gesetzt>} MB"
+        echo "RootFS:         ${ROOTFS_SIZE:-<nicht gesetzt>} GB"
+        echo "IPv4-Adresse:   ${CT_IPV4:-<nicht gesetzt>}"
+        echo "IPv4-Gateway:   ${GATEWAY_IPV4:-<nicht gesetzt>}"
+        echo "IPv6-Adresse:   ${CT_IPV6:-<nicht gesetzt>}"
+        echo "IPv6-Gateway:   ${GATEWAY_IPV6:-<nicht gesetzt>}"
+        echo "----------------------------------------"
+        echo "Zugriff: pct enter ${CT_ID:-<nicht gesetzt>}  oder  ssh root@${CT_IPV4:-<nicht gesetzt>}"
+        echo
+    fi
 }

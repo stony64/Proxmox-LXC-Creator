@@ -20,7 +20,6 @@
 
 # Exit bei Fehler, nicht gesetzten Variablen oder Pipefehler
 set -euo pipefail
-trap 'log_error "FEHLER in Zeile $LINENO / ERROR at line $LINENO"; exit 2' ERR
 
 ################################################################################
 # 1 – Globale Einstellungen / Global configuration
@@ -30,8 +29,7 @@ readonly STORAGE="FP1000GB"
 readonly TEMPLATE_PATH="/mnt/FP1000GB/template/cache"
 
 # shellcheck disable=SC2034
-LOGFILE="/root/repos/proxmox-lxc-creator/lxc_create_$(date +'%Y%m%d_%H%M%S').log"
-readonly LOGFILE
+readonly LOGFILE="/root/repos/proxmox-lxc-creator/lxc_create_$(date +'%Y%m%d_%H%M%S').log"
 
 readonly NET_BRIDGE="vmbr2"
 readonly BASE_IPV4="192.168.10."
@@ -52,39 +50,14 @@ CT_IPV4="" CT_IPV6="" PARAM_HOSTNAME=""
 source "$(dirname "$0")/translation.func"
 load_translations
 
-# shellcheck source=./security.func
-source "$(dirname "$0")/security.func"
-
-# Dialogtitel/Fenster-Schlüssel (dialogs.func)
-# shellcheck source=./dialogs.func
-source "$(dirname "$0")/dialogs.func"
-
 # shellcheck source=./logging.func
 source "$(dirname "$0")/logging.func"
+trap 'log_error "FEHLER in Zeile $LINENO / ERROR at line $LINENO"; exit 2' ERR
 
-# shellcheck source=./cli.func
-source "$(dirname "$0")/cli.func"
-
-# shellcheck source=./input.func
-source "$(dirname "$0")/input.func"
-
-# shellcheck source=./network.func
-source "$(dirname "$0")/network.func"
-
-# shellcheck source=./ssh.func
-source "$(dirname "$0")/ssh.func"
-
-# shellcheck source=./container.func
-source "$(dirname "$0")/container.func"
-
-# shellcheck source=./system.func
-source "$(dirname "$0")/system.func"
-
-# shellcheck source=./dotfiles.func
-source "$(dirname "$0")/dotfiles.func"
-
-# shellcheck source=./summary.func
-source "$(dirname "$0")/summary.func"
+for func in security dialogs cli input network ssh container system dotfiles summary; do
+    # shellcheck source=./$func.func
+    source "$(dirname "$0")/$func.func"
+done
 
 ################################################################################
 # 3 – Hauptablauf / Main workflow
@@ -111,7 +84,7 @@ main() {
     extract_laptop_key
 
     # Dry-Run? Dann Vorschau anzeigen und beenden
-    [[ "${1:-}" == "--dry-run" ]] && dry_run_preview
+    [[ "${1:-}" == "--dry-run" ]] && { dry_run_preview; exit 0; }
 
     prepare_ssh_key_prestart
     create_container

@@ -95,6 +95,7 @@ set_default_german() {
 
     # --- Netzwerk / IP ---
     MSG[octet]="Letzte Stelle der IPv4-Adresse eingeben (z. B. 42):"
+    MSG[ip_in_use]="Diese IP-Adresse ist bereits einem anderen Container zugewiesen!"
 
     # --- Container-Erstellung ---
     MSG[creating]="Container wird erstellt..."
@@ -173,6 +174,7 @@ set_default_english() {
 
     # --- Network / IP ---
     MSG[octet]="Enter the last octet of the IPv4 address (e.g. 42):"
+    MSG[ip_in_use]="This IP address is already assigned to another container!"
 
     # --- Container creation ---
     MSG[creating]="Creating container..."

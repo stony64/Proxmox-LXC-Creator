@@ -21,10 +21,13 @@
 create_container() {
     log "${MSG[creating]}"
 
-    # Sicherstellen, dass notwendige Variablen gesetzt sind
-    if [[ -z "${OSType:-}" ]]; then
-        exit_with_log "Fehler: OSType ist nicht gesetzt. Funktion detect_ostype_from_template() muss vorher laufen."
-    fi
+    # Pflichtvariablen prüfen
+    for var in OSType CT_ID OSTEMPLATE CT_HOSTNAME CT_CORES CT_MEMORY CT_IPV4 CT_IPV6 \
+            ROOTFS_SIZE CT_PASSWORD STORAGE NET_BRIDGE GATEWAY_IPV4 GATEWAY_IPV6; do
+        if [[ -z "${!var:-}" ]]; then
+            exit_with_log "Fehler: $var ist nicht gesetzt."
+        fi
+    done
 
     pct create "$CT_ID" "$OSTEMPLATE" \
         --hostname "$CT_HOSTNAME" \

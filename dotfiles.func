@@ -17,14 +17,23 @@
 
 ### Klone oder aktualisiere Dotfiles im Container
 ### Clone or update dotfiles repository inside the container
+# ...existing code...
 clone_dotfiles_in_container() {
     log "${MSG[dotfiles]}"
 
+    if [[ -z "${CT_ID:-}" ]]; then
+        log_error "CT_ID ist nicht gesetzt."
+        exit 1
+    fi
+
     if pct exec "$CT_ID" -- bash -eu <<'EOF'
-apt-get update -qq
-apt-get install -y -qq git
+if ! command -v git >/dev/null 2>&1; then
+    apt-get update -qq
+    apt-get install -y -qq git
+fi
 
 if [ ! -d /root/dotfiles/.git ]; then
+    rm -rf /root/dotfiles
     git clone https://github.com/stony64/dotfiles.git /root/dotfiles
 else
     cd /root/dotfiles && git pull

@@ -64,7 +64,25 @@ dialog_title() {
             esac
             ;;
         *)
-            echo "$key"
+            # Fallback: Versuche Deutsch, falls Sprache unbekannt
+            case "$key" in
+                Hostname)         echo "Hostname eingeben" ;;
+                Passwort)         echo "Passwort festlegen" ;;
+                "Container-ID")   echo "Container-ID eingeben" ;;
+                Fehler)           echo "Fehler" ;;
+                Template)         echo "Template auswählen" ;;
+                RootFS)           echo "RootFS-Größe" ;;
+                CPU)              echo "CPU-Kerne" ;;
+                RAM)              echo "Arbeitsspeicher" ;;
+                IP)               echo "IP-Adresse" ;;
+                Modus)            echo "Modusauswahl" ;;
+                Update)           echo "Systemaktualisierung" ;;
+                SSH)              echo "SSH-Key-Auswahl" ;;
+                Dotfiles)         echo "Dotfiles-Setup" ;;
+                Netz)             echo "Netzwerkkonfiguration" ;;
+                Zusammenfassung)  echo "Zusammenfassung" ;;
+                *)                echo "$key" ;;
+            esac
             ;;
     esac
 }

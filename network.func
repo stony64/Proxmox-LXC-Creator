@@ -17,6 +17,15 @@
 #
 ###############################################################################
 
+### Prüft, ob das gewünschte IPv4-Oktett bereits vergeben ist
+### Returns 0 if octet is free, 1 if already in use
+is_ip_octet_in_use() {
+    local octet="$1"
+    local ip="${BASE_IPV4}${octet}"
+    # Extrahiere alle IPv4-Adressen aus bestehenden Containern
+    pct list -o net | awk -F'[=,]' '/ip=/{print $2}' | grep -qx "$ip"
+}
+
 ### Eingabe: Letztes IPv4-Oktett abfragen und IP-Adressen zusammensetzen
 ### Input last IPv4 octet and calculate full static addresses
 get_container_ip() {
@@ -24,11 +33,17 @@ get_container_ip() {
     while true; do
         last_octet=$(whiptail --inputbox "${MSG[octet]}" 10 50 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
 
-        if validate_ip_octet "$last_octet"; then
-            break
-        else
+        if ! validate_ip_octet "$last_octet"; then
             whiptail --msgbox "${MSG[input_invalid]}" 8 60
+            continue
         fi
+
+        if is_ip_octet_in_use "$last_octet"; then
+            whiptail --msgbox "${MSG[ip_in_use]:-IP bereits vergeben!}" 8 60
+            continue
+        fi
+
+        break
     done
 
     CT_IPV4="${BASE_IPV4}${last_octet}"

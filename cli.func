@@ -18,13 +18,19 @@
 
 ### Kommandozeilenargumente verarbeiten (z. B. --hostname)
 ### Parse CLI parameters (e.g. --hostname)
+# ...existing code...
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --hostname)
                 shift
-                PARAM_HOSTNAME="$1"
-                log "Hostname übergeben: $PARAM_HOSTNAME"
+                if [[ $# -gt 0 && ! "$1" =~ ^-- ]]; then
+                    PARAM_HOSTNAME="$1"
+                    log "Hostname übergeben: $PARAM_HOSTNAME"
+                else
+                    log_error "Fehlender Wert für --hostname"
+                    exit 1
+                fi
                 ;;
             *)
                 log "Unbekannter Parameter: $1"
