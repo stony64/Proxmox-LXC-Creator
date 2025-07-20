@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set +x
 ###############################################################################
 # Proxmox LXC Container Creator – Hauptskript / Main Script
 # Version:    2.7.5
@@ -51,7 +52,7 @@ source "$(dirname "$0")/logging.func"
 trap 'log_error "FEHLER in Zeile $LINENO / ERROR at line $LINENO"; exit 2' ERR
 
 # shellcheck source=./translation.func
-set +ux
+set +u
 source "$(dirname "$0")/translation.func"
 load_translations
 echo "LOGFILE = '${LOGFILE:-NICHT GESETZT}'"
@@ -128,5 +129,5 @@ main() {
     print_summary
     log "print_summary abgeschlossen"
 }
-set -x
 main "$@"
+set -x
