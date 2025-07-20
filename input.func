@@ -14,6 +14,28 @@
 #
 ###############################################################################
 
+### Auswählen, ob Einzelmodus gestartet wird (nur 1 Container aktuell)
+### Select operation mode (currently: single mode only)
+select_mode() {
+    local mode selection
+    mode=$(whiptail --title "${MSG[mode_title]}" \
+        --menu "${MSG[choose_type]}" 15 60 4 \
+        "single" "${MSG[desc_single]}" \
+        "cancel" "${MSG[mode_cancel]}" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+
+    case "$mode" in
+        single)
+            log "${MSG[mode_selected_single]}"
+            ;;
+        cancel)
+            exit_with_log "${MSG[abort]}"
+            ;;
+        *)
+            exit_with_log "Unbekannter Modus: $mode"   # Unknown mode fallback
+            ;;
+    esac
+}
+
 ### Hostname interaktiv abfragen oder CLI-Wert übernehmen
 ### Prompt for hostname or accept --hostname argument
 input_hostname() {

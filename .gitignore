@@ -21,7 +21,7 @@
 # Project-specific directories (e.g. own backups)
 ###############################################################################
 
-.BACKUP/           # Lokales Backup-Verzeichnis / Local backup folder
+.BACKUP/       # Lokales Backup-Verzeichnis / Local backup folder
 
 ###############################################################################
 # Entwicklungsumgebung / Editorverzeichnisse
