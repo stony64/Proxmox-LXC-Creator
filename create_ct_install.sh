@@ -47,8 +47,10 @@ CT_IPV4="" CT_IPV6="" PARAM_HOSTNAME=""
 ################################################################################
 
 # shellcheck source=./translation.func
+set +u
 source "$(dirname "$0")/translation.func"
 load_translations
+set -u
 
 # shellcheck source=./logging.func
 source "$(dirname "$0")/logging.func"
