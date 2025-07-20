@@ -188,3 +188,21 @@ find_next_ctid() {
     fi
     log "${MSG[ctid_assigned]} $CT_ID"
 }
+
+### OS-Typ anhand des gewählten Template-Namens automatisch erkennen
+### Detect OSType automatically from the selected template filename
+detect_ostype_from_template() {
+    local template="${TEMPLATE_FILE:-}"
+    if [[ -z "$template" ]]; then
+        exit_with_log "${MSG[ostype_unknown]:-Fehler: OS-Typ nicht erkannt!}"
+    fi
+
+    # Nutze Regex, um z. B. "debian-12-standard_12.7-1_amd64.tar.zst" → "debian" zu extrahieren
+    if [[ "$template" =~ ^([a-zA-Z0-9]+)- ]]; then
+        OSType="${BASH_REMATCH[1]}"
+    else
+        OSType=""
+        exit_with_log "${MSG[ostype_unknown]:-Fehler: OS-Typ im Template nicht erkannt!}"
+    fi
+    log "${MSG[ostype_detected]:-OS-Typ erkannt:} $OSType"
+}
