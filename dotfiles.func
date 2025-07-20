@@ -20,11 +20,7 @@
 # ...existing code...
 clone_dotfiles_in_container() {
     log "${MSG[dotfiles]}"
-
-    if [[ -z "${CT_ID:-}" ]]; then
-        log_error "CT_ID ist nicht gesetzt."
-        exit 1
-    fi
+    [[ -z "${CT_ID:-}" ]] && exit_with_log "CT_ID ist nicht gesetzt."
 
     if pct exec "$CT_ID" -- bash -eu <<'EOF'
 if ! command -v git >/dev/null 2>&1; then

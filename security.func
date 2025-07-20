@@ -15,11 +15,7 @@
 ### Prüfen, ob das Skript als root ausgeführt wird
 ### Ensure script is executed as root
 check_root() {
-    if [[ "$EUID" -ne 0 ]]; then
-        log_error "Dieses Skript muss als root ausgeführt werden."
-        log_error "This script must be run as root."
-        exit 1
-    fi
+    [[ "$EUID" -ne 0 ]] && exit_with_log "Dieses Skript muss als root ausgeführt werden."
 }
 
 check_bash_version() {
@@ -34,11 +30,7 @@ check_bash_version() {
 check_required_tools() {
     local tools=("whiptail" "pct" "git")
     for tool in "${tools[@]}"; do
-        if ! command -v "$tool" &>/dev/null; then
-            log_error "Benötigtes Tool '$tool' fehlt."
-            log_error "Required tool '$tool' is missing."
-            exit 1
-        fi
+        command -v "$tool" &>/dev/null || exit_with_log "Benötigtes Tool '$tool' fehlt."
     done
 }
 

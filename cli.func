@@ -1,24 +1,31 @@
 #!/usr/bin/env bash
 ###############################################################################
 # cli.func – CLI-Parameterverarbeitung für Proxmox LXC-Ersteller
-# Version:    2.7.5
+# Version:    2.7.6
 # Datum:      2025-07-21
 #
 # Beschreibung (Deutsch):
-# Diese Datei enthält Funktionen zur Verarbeitung von Kommandozeilenargumenten
-# für das Hauptskript 'create_ct_install.sh'. Unterstützt aktuell z. B.:
-#   --hostname   Übergabe eines Hostnamens zur automatischen Vorkonfiguration
+# Dieses Modul verarbeitet Kommandozeilenargumente für das Hauptskript
+# 'create_ct_install.sh'. Unterstützt derzeit folgende Parameter:
 #
-# Description (English):
-# This file provides CLI argument parsing functions for use in the main
-# script 'create_ct_install.sh'. Currently supported parameters include:
-#   --hostname   Passes a hostname value for preconfiguration
+# Unterstützte Parameter (DE):
+#   --hostname <name>   Setzt den Hostnamen direkt (ohne Dialog)
+#   --dry-run           Zeigt die Konfiguration zur Kontrolle, ohne einen
+#                       Container zu erstellen
+#   --help              Zeigt diese Hilfe
+#
+# Supported CLI parameters (EN):
+#   --hostname <name>   Sets the container hostname directly (skip prompt)
+#   --dry-run           Shows configuration preview but does not create a container
+#   --help              Displays this help message
+#
+# Vorbereitung auf zukünftige Parameter wie:
+#   --memory <MB>, --cores <int>, --template <file>, --ssh-key <file>, ...
 #
 ###############################################################################
 
-### Kommandozeilenargumente verarbeiten (z. B. --hostname)
-### Parse CLI parameters (e.g. --hostname)
-# ...existing code...
+### Kommandozeilenargumente parsen
+### Parse CLI parameters
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -26,16 +33,44 @@ parse_args() {
                 shift
                 if [[ $# -gt 0 && ! "$1" =~ ^-- ]]; then
                     PARAM_HOSTNAME="$1"
-                    log "Hostname übergeben: $PARAM_HOSTNAME"
+                    log "CLI: Hostname gesetzt auf '$PARAM_HOSTNAME'"
                 else
-                    log_error "Fehlender Wert für --hostname"
-                    exit 1
+                    exit_with_log "Fehlender Wert für --hostname"
                 fi
                 ;;
+            --dry-run)
+                PARAM_DRYRUN=true
+                log "CLI: Dry-Run aktiviert"
+                ;;
+            --help | -h)
+                print_cli_help
+                exit 0
+                ;;
             *)
-                log "Unbekannter Parameter: $1"
+                log_error "Unbekannter Parameter: $1"
+                log "Benutze '--help' für eine Liste unterstützter Optionen."
+                exit 1
                 ;;
         esac
         shift
     done
+}
+
+### Hilfe-/Übersichtsanzeige für CLI-Parameter
+print_cli_help() {
+    echo ""
+    echo "Verfügbare CLI-Parameter:"
+    echo "  --hostname <name>   Setzt den Container-Hostname direkt"
+    echo "  --dry-run           Zeigt Konfiguration, ohne Container zu erstellen"
+    echo "  --help, -h          Zeigt diese Hilfe"
+    echo ""
+    echo "Beispiel:"
+    echo "  ./create_ct_install.sh --hostname my-lxc"
+    echo ""
+    echo "Weitere Parameter in Vorbereitung:"
+    echo "  --memory <MB>       (z. B. 1024)"
+    echo "  --cores <Zahl>      (z. B. 2)"
+    echo "  --template <Datei>  (Pfad zur LXC-Template-Datei)"
+    echo "  --ssh-key <Datei>   (SSH Public Key für root einfügen)"
+    echo ""
 }
