@@ -50,6 +50,8 @@ CT_IPV4="" CT_IPV6="" PARAM_HOSTNAME=""
 set +ux
 source "$(dirname "$0")/translation.func"
 load_translations
+log "Sprache geladen: $LANGCODE"
+log "MSG[mode_title]: '${MSG[mode_title]}'"
 
 # shellcheck source=./logging.func
 source "$(dirname "$0")/logging.func"
