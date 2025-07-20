@@ -47,10 +47,9 @@ CT_IPV4="" CT_IPV6="" PARAM_HOSTNAME=""
 ################################################################################
 
 # shellcheck source=./translation.func
-set +u
+set +ux
 source "$(dirname "$0")/translation.func"
 load_translations
-set -u
 
 # shellcheck source=./logging.func
 source "$(dirname "$0")/logging.func"
@@ -60,6 +59,8 @@ for func in security dialogs cli input network ssh container system dotfiles sum
     # shellcheck source=./$func.func
     source "$(dirname "$0")/$func.func"
 done
+
+set -u
 
 ################################################################################
 # 3 – Hauptablauf / Main workflow
@@ -96,5 +97,5 @@ main() {
     clone_dotfiles_in_container
     print_summary
 }
-
+set -x
 main "$@"
