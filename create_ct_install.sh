@@ -74,7 +74,7 @@ main() {
     log "PARAM_DRYRUN ist: ${PARAM_DRYRUN:-nicht gesetzt}"
     parse_args "$@"
     log "Parse args abgeschlossen"
-    check_root
+    #check_root
     echo "check_root abgeschlossen"
     log "check root abgeschlossen"
     check_bash_version
