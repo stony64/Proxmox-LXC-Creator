@@ -4,24 +4,31 @@
 #!/usr/bin/env bash
 ###############################################################################
 # cli.func – CLI-Parameterverarbeitung für Proxmox LXC-Ersteller
-# Version:    2.7.5
+# Version:    2.7.6
 # Datum:      2025-07-21
 #
 # Beschreibung (Deutsch):
-# Diese Datei enthält Funktionen zur Verarbeitung von Kommandozeilenargumenten
-# für das Hauptskript 'create_ct_install.sh'. Unterstützt aktuell z. B.:
-#   --hostname   Übergabe eines Hostnamens zur automatischen Vorkonfiguration
+# Dieses Modul verarbeitet Kommandozeilenargumente für das Hauptskript
+# 'create_ct_install.sh'. Unterstützt derzeit folgende Parameter:
 #
-# Description (English):
-# This file provides CLI argument parsing functions for use in the main
-# script 'create_ct_install.sh'. Currently supported parameters include:
-#   --hostname   Passes a hostname value for preconfiguration
+# Unterstützte Parameter (DE):
+#   --hostname <name>   Setzt den Hostnamen direkt (ohne Dialog)
+#   --dry-run           Zeigt die Konfiguration zur Kontrolle, ohne einen
+#                       Container zu erstellen
+#   --help              Zeigt diese Hilfe
+#
+# Supported CLI parameters (EN):
+#   --hostname <name>   Sets the container hostname directly (skip prompt)
+#   --dry-run           Shows configuration preview but does not create a container
+#   --help              Displays this help message
+#
+# Vorbereitung auf zukünftige Parameter wie:
+#   --memory <MB>, --cores <int>, --template <file>, --ssh-key <file>, ...
 #
 ###############################################################################
 
-### Kommandozeilenargumente verarbeiten (z. B. --hostname)
-### Parse CLI parameters (e.g. --hostname)
-# ...existing code...
+### Kommandozeilenargumente parsen
+### Parse CLI parameters
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -29,18 +36,46 @@ parse_args() {
                 shift
                 if [[ $# -gt 0 && ! "$1" =~ ^-- ]]; then
                     PARAM_HOSTNAME="$1"
-                    log "Hostname übergeben: $PARAM_HOSTNAME"
+                    log "CLI: Hostname gesetzt auf '$PARAM_HOSTNAME'"
                 else
-                    log_error "Fehlender Wert für --hostname"
-                    exit 1
+                    exit_with_log "Fehlender Wert für --hostname"
                 fi
                 ;;
+            --dry-run)
+                PARAM_DRYRUN=true
+                log "CLI: Dry-Run aktiviert"
+                ;;
+            --help | -h)
+                print_cli_help
+                exit 0
+                ;;
             *)
-                log "Unbekannter Parameter: $1"
+                log_error "Unbekannter Parameter: $1"
+                log "Benutze '--help' für eine Liste unterstützter Optionen."
+                exit 1
                 ;;
         esac
         shift
     done
+}
+
+### Hilfe-/Übersichtsanzeige für CLI-Parameter
+print_cli_help() {
+    echo ""
+    echo "Verfügbare CLI-Parameter:"
+    echo "  --hostname <name>   Setzt den Container-Hostname direkt"
+    echo "  --dry-run           Zeigt Konfiguration, ohne Container zu erstellen"
+    echo "  --help, -h          Zeigt diese Hilfe"
+    echo ""
+    echo "Beispiel:"
+    echo "  ./create_ct_install.sh --hostname my-lxc"
+    echo ""
+    echo "Weitere Parameter in Vorbereitung:"
+    echo "  --memory <MB>       (z. B. 1024)"
+    echo "  --cores <Zahl>      (z. B. 2)"
+    echo "  --template <Datei>  (Pfad zur LXC-Template-Datei)"
+    echo "  --ssh-key <Datei>   (SSH Public Key für root einfügen)"
+    echo ""
 }
 
 
@@ -319,11 +354,7 @@ dialog_title() {
 # ...existing code...
 clone_dotfiles_in_container() {
     log "${MSG[dotfiles]}"
-
-    if [[ -z "${CT_ID:-}" ]]; then
-        log_error "CT_ID ist nicht gesetzt."
-        exit 1
-    fi
+    [[ -z "${CT_ID:-}" ]] && exit_with_log "CT_ID ist nicht gesetzt."
 
     if pct exec "$CT_ID" -- bash -eu <<'EOF'
 if ! command -v git >/dev/null 2>&1; then
@@ -469,23 +500,6 @@ input_resources() {
     log "${MSG[cores]}: $CT_CORES, ${MSG[memory]}: $CT_MEMORY MB"
 }
 
-### IP-Oktett abfragen und IP-Adressen zusammensetzen
-### Ask for last IPv4 octet and construct IPv4/IPv6 address variables
-get_container_ip() {
-    local last_octet
-    while true; do
-        last_octet=$(whiptail --title "$(dialog_title IP)" \
-            --inputbox "${MSG[octet]}" 10 50 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
-        if validate_ip_octet "$last_octet"; then
-            break
-        fi
-        whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_invalid]}" 8 60
-    done
-    CT_IPV4="${BASE_IPV4}${last_octet}"
-    CT_IPV6="${BASE_IPV6}${last_octet}"
-    log "IPv4: $CT_IPV4, IPv6: $CT_IPV6"
-}
-
 ### Modusauswahl (derzeit Einzelmodus/Abbruch)
 ### Select mode (currently only single/cancel)
 select_mode() {
@@ -534,12 +548,6 @@ detect_ostype_from_template() {
         exit_with_log "${MSG[ostype_unknown]:-Fehler: OS-Typ im Template nicht erkannt!}"
     fi
     log "${MSG[ostype_detected]:-OS-Typ erkannt:} $OSType"
-}
-
-### Prüft, ob eine Zeichenkette ein gültiges IP-Oktett ist (0–255)
-### Validate if a string is a valid IP octet (returns 0=valid, 1=invalid)
-validate_ip_octet() {
-    [[ "$1" =~ ^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])$ ]]
 }
 
 
@@ -712,11 +720,7 @@ echo "Done! Bundle file: $OUTPUT"
 ### Prüfen, ob das Skript als root ausgeführt wird
 ### Ensure script is executed as root
 check_root() {
-    if [[ "$EUID" -ne 0 ]]; then
-        log_error "Dieses Skript muss als root ausgeführt werden."
-        log_error "This script must be run as root."
-        exit 1
-    fi
+    [[ "$EUID" -ne 0 ]] && exit_with_log "Dieses Skript muss als root ausgeführt werden."
 }
 
 check_bash_version() {
@@ -731,11 +735,7 @@ check_bash_version() {
 check_required_tools() {
     local tools=("whiptail" "pct" "git")
     for tool in "${tools[@]}"; do
-        if ! command -v "$tool" &>/dev/null; then
-            log_error "Benötigtes Tool '$tool' fehlt."
-            log_error "Required tool '$tool' is missing."
-            exit 1
-        fi
+        command -v "$tool" &>/dev/null || exit_with_log "Benötigtes Tool '$tool' fehlt."
     done
 }
 

@@ -26,13 +26,13 @@ find . \
   -type f \( -name '*.sh' -o -name '*.func' \) -print | sort | while read -r f; do
     rel_path="${f#./}"
     # Header für jede Datei / Header for each file
-    echo "### $rel_path" >> "$OUTPUT"
-    echo >> "$OUTPUT"
-    # Dateiinhalt anhängen / Append file content
-    cat "$f" >> "$OUTPUT"
-    # Zwei Leerzeilen trennen die Dateien / Two blank lines separate files
-    echo >> "$OUTPUT"
-    echo >> "$OUTPUT"
+    {
+        echo "### $rel_path"
+        echo
+        cat "$f"
+        echo
+        echo
+    } >> "$OUTPUT"
 done
 
 echo "Fertig! Sammeldatei: $OUTPUT"
