@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+###############################################################################
+# system.func – Systempflege und Konfiguration im LXC-Container
+# Version:    2.7.5
+# Datum:      2025-07-21
+# Beschreibung:
+#   Locale, Zeitzone und Betriebssystem-Updates im Container.
+###############################################################################
+
+### Locales und Zeitzone im Container setzen
+### Configure locales and timezone in the container
+configure_locales() {
+    log "${MSG[locales]}"
+    log "${MSG[timezone]}"
+    if pct exec "$CT_ID" -- apt-get install -y -qq locales tzdata &&
+       pct exec "$CT_ID" -- bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; echo 'de_DE.UTF-8 UTF-8' >> /etc/locale.gen; locale-gen" &&
+       pct exec "$CT_ID" -- update-locale LANG=de_DE.UTF-8 &&
+       pct exec "$CT_ID" -- ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime &&
+       pct exec "$CT_ID" -- bash -c 'echo "Europe/Berlin" > /etc/timezone'; then
+        log_success "${MSG[locales_ok]}"
+        log_success "${MSG[timezone_ok]}"
+    else
+        log_error "${MSG[locales_fail]}"
+        log_error "${MSG[timezone_fail]}"
+        exit 1
+    fi
+}
+
+### Container-System per APT aktualisieren
+### Run apt update/upgrade/clean in the container
+update_container() {
+    log "${MSG[update]}"
+    if pct exec "$CT_ID" -- bash -c '
+        DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq &&
+        apt-get upgrade -y -qq &&
+        apt-get autoremove -y -qq &&
+        apt-get clean -qq
+    '; then
+        log_success "${MSG[update_ok]}"
+    else
+        log_error "${MSG[update_fail]}"
+        exit 1
+    fi
+}

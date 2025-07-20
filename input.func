@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+###############################################################################
+# input.func – Interaktive Benutzereingaben
+# Version:    2.7.5
+# Datum:      2025-07-21
+###############################################################################
+
+### Hostname eingeben oder übernehmen
+input_hostname() {
+    if [[ -n "$PARAM_HOSTNAME" ]]; then
+        CT_HOSTNAME="$PARAM_HOSTNAME"
+        log "Verwende übergebenen Hostname: $CT_HOSTNAME"
+        return
+    fi
+    while true; do
+        CT_HOSTNAME=$(whiptail --title "$(dialog_title Hostname)" \
+            --inputbox "${MSG[hostname]}" 10 60 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+        [[ -z "$CT_HOSTNAME" ]] && { whiptail --msgbox "${MSG[input_empty]}" 8 60; continue; }
+        [[ "$CT_HOSTNAME" =~ ^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$" ]] && break
+        whiptail --msgbox "${MSG[input_invalid]}" 8 60
+    done
+    log "${MSG[hostname]} $CT_HOSTNAME"
+}
+
+### Passwort abfragen
+input_password() {
+    while true; do
+        CT_PASSWORD=$(whiptail --title "$(dialog_title Passwort)" --passwordbox "${MSG[password]}" 10 60 "" 3>&1 1>&2 2>&3)
+        [[ $? -ne 0 ]] && exit_with_log "${MSG[abort]}"
+        [[ -z "$CT_PASSWORD" || ${#CT_PASSWORD} -lt 8 ]] && { whiptail --msgbox "${MSG[input_invalid]}" 8 60; continue; }
+        break
+    done
+    log "${MSG[password]} wurde erfolgreich gesetzt."
+}
+
+### Template auswählen
+select_template() {
+    log "${MSG[template_select]} $TEMPLATE_PATH"
+    mapfile -t templates < <(cd "$TEMPLATE_PATH" && ls -1 *-standard_*.tar.zst 2>/dev/null || true)
+    [[ ${#templates[@]} -eq 0 ]] && exit_with_log "${MSG[template_none]}"
+    local menu_items=()
+    for tpl in "${templates[@]}"; do menu_items+=("$tpl" ""); done
+    TEMPLATE_FILE=$(whiptail --title "$(dialog_title Template)" --menu "${MSG[template_select]}" 20 70 10 "${menu_items[@]}" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+    OSTEMPLATE="${TEMPLATE_PATH}/${TEMPLATE_FILE}"
+    log "$(printf "${MSG[template_chosen]}" "$TEMPLATE_FILE")"
+}
+
+### Ressourcen konfigurieren
+input_rootfs_size() {
+    ROOTFS_SIZE=$(request_positive_integer "${MSG[rootfs]}" "2") || exit_with_log "${MSG[abort]}"
+    log "${MSG[rootfs]}: $ROOTFS_SIZE GB"
+}
+input_resources() {
+    CT_CORES=$(request_positive_integer "${MSG[cores]}" "1") || exit_with_log "${MSG[abort]}"
+    CT_MEMORY=$(request_positive_integer "${MSG[memory]}" "512") || exit_with_log "${MSG[abort]}"
+    log "${MSG[cores]}: $CT_CORES, ${MSG[memory]}: $CT_MEMORY MB"
+}

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+###############################################################################
+# container.func – Container-Erstellung für Proxmox LXC
+# Version:    2.7.5
+# Datum:      2025-07-21
+# Beschreibung:
+#   Erzeugt und konfiguriert LXC-Container im Ablauf.
+###############################################################################
+
+### LXC-Container erstellen und starten
+### Create and start LXC container
+create_container() {
+    log "${MSG[creating]}"
+    pct create "$CT_ID" "$OSTEMPLATE" \
+        --hostname "$CT_HOSTNAME" \
+        --arch amd64 \
+        --cores "$CT_CORES" \
+        --memory "$CT_MEMORY" \
+        --swap 512 \
+        --features nesting=1 \
+        --unprivileged 0 \
+        --net0 "name=eth0,bridge=${NET_BRIDGE},ip=${CT_IPV4}/24,gw=${GATEWAY_IPV4},ip6=${CT_IPV6}/64,gw6=${GATEWAY_IPV6}" \
+        --rootfs "$STORAGE:$ROOTFS_SIZE" \
+        --password "$CT_PASSWORD" \
+        --ostype "$OSType" \
+        --description "Erstellt am $(date '+%d.%m.%Y %H:%M:%S')"
+    log_success "${MSG[created]} (CT-ID: $CT_ID)"
+    pct start "$CT_ID"
+    log_success "${MSG[started]} (CT-ID: $CT_ID)"
+    pct set "$CT_ID" --tags "$OSType"
+    log "Tag gesetzt: $OSType"
+}

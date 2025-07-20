@@ -1,0 +1,24 @@
+# Shell Bash 
+
+# BACKUP-Dir
+.BACKUP/
+
+# Logs und temporäre Dateien
+*.log
+*.bak
+*.tmp
+*.swp
+
+# Backup-Dateien von Bash-Skripten
+*~
+*.sh~
+
+# Editor-Dateien
+*.vscode
+*.idea
+
+# Systemdateien
+.DS_Store
+
+# Sonstige
+.env

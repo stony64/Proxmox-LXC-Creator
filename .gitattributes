@@ -1,0 +1,10 @@
+# Immer unix-artige Zeilenenden für Skripte
+*.sh      text eol=lf
+*.func    text eol=lf
+
+# Auch für Markdown und Konfigs sinnvoll
+*.md      text eol=lf
+*.json    text eol=lf
+
+# Standard: text=auto für alle übrigen Textdateien
+*         text=auto

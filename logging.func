@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+###############################################################################
+# logging.func – Zentrale Logging-Funktionen für Proxmox LXC-Ersteller
+# Version:    2.7.5
+# Datum:      2025-07-21
+# Beschreibung:
+#   Konsistente Protokollierung von Ausgaben, Fehlern und Abbrüchen.
+###############################################################################
+
+### [EN] Log line to stdout and file
+### [DE] Ausgabe in Konsole und Logdatei schreiben
+log()         { echo "[INFO] $1" | tee -a "$LOGFILE"; }
+
+### [EN] Successful operation
+### [DE] Erfolgreiche Aktion loggen
+log_success() { echo "[OK]   $1" | tee -a "$LOGFILE"; }
+
+### [EN] Log error and show to stderr
+### [DE] Fehlerhafte Aktion loggen
+log_error()   { echo "[ERROR] $1" | tee -a "$LOGFILE"; }
+
+### [EN] Exit script with error log and status code
+### [DE] Skript mit Fehler abbrechen
+exit_with_log() { log_error "$1"; exit 1; }

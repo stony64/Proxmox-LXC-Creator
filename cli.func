@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+###############################################################################
+# cli.func – CLI-Parameterverarbeitung für Proxmox LXC-Ersteller
+# Version:    2.7.5
+# Datum:      2025-07-21
+###############################################################################
+
+### [EN] Parse CLI parameters (e.g. --hostname)
+### [DE] Kommandozeilenargumente parsen
+parse_args() {
+    local arg
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --hostname)
+                shift
+                PARAM_HOSTNAME="$1"
+                log "Hostname übergeben: $PARAM_HOSTNAME"
+                ;;
+        esac
+        shift
+    done
+}

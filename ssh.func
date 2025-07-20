@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+###############################################################################
+# ssh.func – SSH-Key-Suche und Setup für Proxmox LXC
+# Version:    2.7.5
+# Datum:      2025-07-21
+###############################################################################
+
+### SSH-Kommentar abfragen
+ask_for_laptop_key_comment() {
+    LAPTOP_KEY_COMMENT=$(whiptail --inputbox "${MSG[ssh_comment_prompt]}" 10 70 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+    [[ -z "$LAPTOP_KEY_COMMENT" ]] && exit_with_log "${MSG[input_empty]}"
+    log "${MSG[ssh_lookup]}: $LAPTOP_KEY_COMMENT"
+}
+
+### Gültigen Key finden und speichern
+extract_laptop_key() {
+    local authfile="/root/.ssh/authorized_keys"
+    [[ ! -f "$authfile" ]] && exit_with_log "authorized_keys nicht gefunden!"
+    local key_match
+    key_match=$(grep -m1 "$LAPTOP_KEY_COMMENT" "$authfile" || true)
+    if [[ "$key_match" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
+        SSH_PUBKEY=$(mktemp "/tmp/lxc_ssh_${CT_ID}_XXXXXXXX.pub")
+        echo "$key_match" > "$SSH_PUBKEY"
+        chmod 600 "$SSH_PUBKEY"
+        log_success "${MSG[ssh_found]}"
+    else
+        whiptail --msgbox "${MSG[ssh_not_found]}" 8 60
+        SSH_PUBKEY=""
+    fi
+}
+
+### Key ins LXC rootFS kopieren
+prepare_ssh_key_prestart() { ... }
+### Key per pct push/setup nach Start
+finalize_ssh_key_after_start() { ... }
