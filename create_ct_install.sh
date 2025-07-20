@@ -54,6 +54,7 @@ trap 'log_error "FEHLER in Zeile $LINENO / ERROR at line $LINENO"; exit 2' ERR
 set +ux
 source "$(dirname "$0")/translation.func"
 load_translations
+echo "LOGFILE = '${LOGFILE:-NICHT GESETZT}'"
 log "Sprache geladen: $LANGCODE"
 log "MSG[mode_title]: '${MSG[mode_title]}'"
 

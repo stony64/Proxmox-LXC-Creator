@@ -215,6 +215,7 @@ main() {
     check_root
     log "check root abgeschlossen"
     check_bash_version
+    log "BASH_VERSINFO: ${BASH_VERSINFO[@]:-(leer)}"
     log "check_bash_version abgeschlossen"
     check_required_tools
     log "check_required_tools abgeschlossen"
@@ -622,7 +623,8 @@ log_error() {
 ### Loggt Fehlermeldung und bricht Skript ab (DE/EN)
 ### Logs error message and exits script
 exit_with_log() {
-    log_error "$1"
+    local msg="${1:-[Unbekannter Fehler/Unknown error]}"
+    log_error "$msg"
     exit 1
 }
 
@@ -756,14 +758,19 @@ check_root() {
 }
 
 check_bash_version() {
-    if [[ -z "${BASH_VERSINFO[0]:-}" ]]; then
-        exit_with_log "BASH_VERSINFO nicht verfügbar – bitte Skript mit 'bash' ausführen."
+    if [[ -z "${BASH_VERSINFO[0]:-}" || -z "${BASH_VERSINFO[1]:-}" ]]; then
+        exit_with_log "${MSG[abort]:-BASH_VERSINFO nicht verfügbar – bitte Skript mit bash ausführen.}"
     fi
 
     local bash_major="${BASH_VERSINFO[0]}"
     local bash_minor="${BASH_VERSINFO[1]}"
+
+    if ! [[ "$bash_major" =~ ^[0-9]+$ ]] || ! [[ "$bash_minor" =~ ^[0-9]+$ ]]; then
+        exit_with_log "Bash-Version nicht numerisch auswertbar: $bash_major.$bash_minor"
+    fi
+
     if (( bash_major < 4 )); then
-        exit_with_log "Bash-Version $bash_major.$bash_minor zu alt – mindestens 4.0 erforderlich."
+        exit_with_log "Bash $bash_major.$bash_minor zu alt – mindestens 4.0 erforderlich."
     fi
 }
 
