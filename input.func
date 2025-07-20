@@ -121,3 +121,17 @@ input_resources() {
     CT_MEMORY=$(request_positive_integer "${MSG[memory]}" "512") || exit_with_log "${MSG[abort]}"
     log "${MSG[cores]}: $CT_CORES, ${MSG[memory]}: $CT_MEMORY MB"
 }
+
+### Nächste freie LXC-Container-ID finden
+### Find next free LXC container ID
+find_next_ctid() {
+    # Finde höchste verwendete CT-ID via pct list (standardmäßig ab 100 starten)
+    local last_id
+    last_id=$(pct list | awk 'NR>1 {print $1}' | sort -n | tail -n1)
+    if [[ -z "$last_id" ]]; then
+        CT_ID=100
+    else
+        CT_ID=$((last_id + 1))
+    fi
+    log "${MSG[ctid_assigned]} $CT_ID"
+}
