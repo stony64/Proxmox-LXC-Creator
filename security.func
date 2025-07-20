@@ -15,7 +15,9 @@
 ### Prüfen, ob das Skript als root ausgeführt wird
 ### Ensure script is executed as root
 check_root() {
-    [[ "$EUID" -ne 0 ]] && exit_with_log "Dieses Skript muss als root ausgeführt werden."
+    echo "DEBUG: EUID='$EUID'"
+    [[ "$EUID" -ne 0 ]] && exit_with_log "${MSG[root_required]}"
+#    [[ "$EUID" -ne 0 ]] && exit_with_log "Dieses Skript muss als root ausgeführt werden."
 }
 
 check_bash_version() {
