@@ -55,6 +55,10 @@ load_translations
 # shellcheck source=./security.func
 source "$(dirname "$0")/security.func"
 
+# Dialogtitel/Fenster-Schlüssel (dialogs.func)
+# shellcheck source=./dialogs.func
+source "$(dirname "$0")/dialogs.func"
+
 # shellcheck source=./logging.func
 source "$(dirname "$0")/logging.func"
 

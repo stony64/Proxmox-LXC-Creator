@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+###############################################################################
+# dialogs.func – Whiptail-Dialog-Überschriften für Proxmox LXC Creator
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Dieses Modul liefert lokalisierte Titel für whiptail-Dialoge, abhängig von
+# der Sprache und dem jeweiligen Kontext.
+#
+# Description (English):
+# This module provides localized window titles for whiptail dialogs, according
+# to the current language and dialog context.
+#
+###############################################################################
+
+### Liefert die Überschrift/Titeltext für whiptail-Dialoge (mehrsprachig)
+### Returns title text for whiptail dialogs (localized)
+dialog_title() {
+    local key="$1"
+    local lang="${LANGCODE:-de}"  # Default language: German
+
+    case "$lang" in
+        de)
+            case "$key" in
+                Hostname)      echo "Hostname eingeben" ;;
+                Passwort)      echo "Passwort festlegen" ;;
+                "Container-ID") echo "Container-ID eingeben" ;;
+                Fehler)        echo "Fehler" ;;
+                Template)      echo "Template auswählen" ;;
+                RootFS)        echo "RootFS-Größe" ;;
+                CPU)           echo "CPU-Kerne" ;;
+                RAM)           echo "Arbeitsspeicher" ;;
+                IP)            echo "IP-Adresse" ;;
+                Modus)         echo "Modusauswahl" ;;
+                Update)        echo "Systemaktualisierung" ;;
+                SSH)           echo "SSH-Key-Auswahl" ;;
+                Dotfiles)      echo "Dotfiles-Setup" ;;
+                Netz)          echo "Netzwerkkonfiguration" ;;
+                Zusammenfassung) echo "Zusammenfassung" ;;
+                *)             echo "$key" ;;
+            esac
+            ;;
+        en)
+            case "$key" in
+                Hostname)      echo "Enter Hostname" ;;
+                Passwort)      echo "Set root password" ;;
+                "Container-ID") echo "Enter Container ID" ;;
+                Fehler)        echo "Error" ;;
+                Template)      echo "Select template" ;;
+                RootFS)        echo "RootFS size" ;;
+                CPU)           echo "CPU cores" ;;
+                RAM)           echo "Memory" ;;
+                IP)            echo "IP address" ;;
+                Modus)         echo "Mode selection" ;;
+                Update)        echo "System update" ;;
+                SSH)           echo "SSH key selection" ;;
+                Dotfiles)      echo "Dotfiles setup" ;;
+                Netz)          echo "Network configuration" ;;
+                Zusammenfassung) echo "Summary" ;;
+                *)             echo "$key" ;;
+            esac
+            ;;
+        *)
+            echo "$key"
+            ;;
+    esac
+}
