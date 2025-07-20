@@ -19,11 +19,14 @@ check_root() {
 }
 
 check_bash_version() {
+    if [[ -z "${BASH_VERSINFO[0]:-}" ]]; then
+        exit_with_log "BASH_VERSINFO nicht verfügbar – bitte Skript mit 'bash' ausführen."
+    fi
+
     local bash_major="${BASH_VERSINFO[0]}"
     local bash_minor="${BASH_VERSINFO[1]}"
     if (( bash_major < 4 )); then
-        log_error "Bash-Version $bash_major.$bash_minor zu alt – mindestens 4.0 erforderlich."
-        exit 1
+        exit_with_log "Bash-Version $bash_major.$bash_minor zu alt – mindestens 4.0 erforderlich."
     fi
 }
 

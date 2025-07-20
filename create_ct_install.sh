@@ -71,23 +71,37 @@ set -u
 main() {
     log "PARAM_DRYRUN ist: ${PARAM_DRYRUN:-nicht gesetzt}"
     parse_args "$@"
+    log "Parse args abgeschlossen"
     check_root
+    log "check root abgeschlossen"
     check_bash_version
+    log "check_bash_version abgeschlossen"
     check_required_tools
+    log "check_required_tools abgeschlossen"
     check_directory_exists "$TEMPLATE_PATH"
+    log "check_directory_exists abgeschlossen: $TEMPLATE_PATH"
     select_mode
+    log "select_mode abgeschlossen"
     find_next_ctid
-
+    log "find_next_ctid abgeschlossen: CT_ID=$CT_ID"
     input_hostname
+    log "input_hostname abgeschlossen: CT_HOSTNAME=$CT_HOSTNAME"
     input_password
+    log "input_password abgeschlossen: CT_PASSWORD=******"
     select_template
+    log "select_template abgeschlossen: TEMPLATE_FILE=$TEMPLATE_FILE"
     detect_ostype_from_template
+    log "detect_ostype_from_template abgeschlossen: OSTEMPLATE=$OSTEMPLATE, OSType=$OSType"
     input_rootfs_size
+    log "input_rootfs_size abgeschlossen: ROOTFS_SIZE=$ROOTFS_SIZE"
     input_resources
+    log "input_resources abgeschlossen: CT_CORES=$CT_CORES, CT_MEMORY=$CT_MEMORY"
     get_container_ip
-
+    log "get_container_ip abgeschlossen: CT_IPV4=$CT_IPV4, CT_IPV6=$CT_IPV6"
     ask_for_laptop_key_comment
+    log "ask_for_laptop_key_comment abgeschlossen: LAPTOP_KEY_COMMENT=$LAPTOP_KEY_COMMENT"
     extract_laptop_key
+    log "extract_laptop_key abgeschlossen: SSH_PUBKEY=${SSH_PUBKEY:-nicht gesetzt}"
 
     # Dry-Run? Dann Vorschau anzeigen und beenden
     #[[ "${1:-}" == "--dry-run" ]] && { dry_run_preview; exit 0; }
@@ -95,14 +109,22 @@ main() {
         dry_run_preview
         exit 0
     fi
+    log "Dry-Run abgeschlossen"
 
     prepare_ssh_key_prestart
+    log "prepare_ssh_key_prestart abgeschlossen: SSH_PUBKEY=${SSH_PUBKEY:-nicht gesetzt}"
     create_container
+    log "Container mit ID $CT_ID erstellt."
     finalize_ssh_key_after_start
+    log "finalize_ssh_key_after_start abgeschlossen: SSH_PUBKEY=${SSH_PUBKEY:-nicht gesetzt}"
     configure_locales
+    log "configure_locales abgeschlossen"
     update_container
+    log "update_container abgeschlossen"
     clone_dotfiles_in_container
+    log "clone_dotfiles_in_container abgeschlossen"
     print_summary
+    log "print_summary abgeschlossen"
 }
 set -x
 main "$@"
