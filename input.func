@@ -3,9 +3,13 @@
 # input.func – Interaktive Benutzereingaben
 # Version:    2.7.5
 # Datum:      2025-07-21
+# Beschreibung:
+#   Behandelt alle Eingaben wie Hostname, Passwort, Template-Auswahl,
+#   Ressourcen und bestätigt / validiert alle Daten via whiptail-TUI.
 ###############################################################################
 
-### Hostname validieren und interaktiv abfragen
+### Hostname interaktiv abfragen oder übergebenen übernehmen
+### Prompt for hostname or use CLI-Provided PARAM_HOSTNAME
 input_hostname() {
     if [[ -n "$PARAM_HOSTNAME" ]]; then
         CT_HOSTNAME="$PARAM_HOSTNAME"
@@ -17,49 +21,73 @@ input_hostname() {
         CT_HOSTNAME=$(whiptail --title "$(dialog_title Hostname)" \
             --inputbox "${MSG[hostname]}" 10 60 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
 
-        [[ -z "$CT_HOSTNAME" ]] && {
-            whiptail --msgbox "${MSG[input_empty]}" 8 60
+        if [[ -z "$CT_HOSTNAME" ]]; then
+            whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_empty]}" 8 60
             continue
-        }
+        fi
 
+        # Hostname-Validierung: RFC-konforme Namen zulassen
         if [[ "$CT_HOSTNAME" =~ ^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$ ]]; then
             break
         else
-            whiptail --msgbox "${MSG[input_invalid]}" 8 60
+            whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_invalid]}" 8 60
         fi
     done
 
     log "${MSG[hostname]} $CT_HOSTNAME"
 }
 
-### Passwort abfragen
+### Passwort sicher erfassen (min. 8 Zeichen, Pflicht)
+### Prompt for root password, validate length
 input_password() {
     while true; do
-        CT_PASSWORD=$(whiptail --title "$(dialog_title Passwort)" --passwordbox "${MSG[password]}" 10 60 "" 3>&1 1>&2 2>&3)
-        [[ $? -ne 0 ]] && exit_with_log "${MSG[abort]}"
-        [[ -z "$CT_PASSWORD" || ${#CT_PASSWORD} -lt 8 ]] && { whiptail --msgbox "${MSG[input_invalid]}" 8 60; continue; }
+        CT_PASSWORD=$(whiptail --title "$(dialog_title Passwort)" \
+            --passwordbox "${MSG[password]}" 10 60 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+
+        if [[ -z "$CT_PASSWORD" || ${#CT_PASSWORD} -lt 8 ]]; then
+            whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_invalid]}" 8 60
+            continue
+        fi
         break
     done
+
     log "${MSG[password]} wurde erfolgreich gesetzt."
 }
 
-### Template auswählen
+### Templates im Verzeichnis anzeigen und Auswahl ermöglichen
+### Select template file from TEMPLATE_PATH via whiptail
 select_template() {
     log "${MSG[template_select]} $TEMPLATE_PATH"
-    mapfile -t templates < <(cd "$TEMPLATE_PATH" && ls -1 *-standard_*.tar.zst 2>/dev/null || true)
+
+    # Sicherer Dateilisting ohne glob-Probleme
+    mapfile -t templates < <(find "$TEMPLATE_PATH" -maxdepth 1 -type f -name '*-standard_*.tar.zst' | sort)
+
     [[ ${#templates[@]} -eq 0 ]] && exit_with_log "${MSG[template_none]}"
+
     local menu_items=()
-    for tpl in "${templates[@]}"; do menu_items+=("$tpl" ""); done
-    TEMPLATE_FILE=$(whiptail --title "$(dialog_title Template)" --menu "${MSG[template_select]}" 20 70 10 "${menu_items[@]}" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
-    OSTEMPLATE="${TEMPLATE_PATH}/${TEMPLATE_FILE}"
-    log "$(printf "${MSG[template_chosen]}" "$TEMPLATE_FILE")"
+    for tpl_path in "${templates[@]}"; do
+        tpl_file=$(basename "$tpl_path")
+        menu_items+=("$tpl_file" "")
+    done
+
+    TEMPLATE_FILE=$(whiptail --title "$(dialog_title Template)" \
+        --menu "${MSG[template_select]}" 20 70 10 "${menu_items[@]}" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+
+    OSTEMPLATE="${TEMPLATE_PATH}/${TEMPLATE_FILE}"  # wird später von create_container() verwendet
+    export OSTEMPLATE
+
+    log "${MSG[template_chosen]} $TEMPLATE_FILE"
 }
 
-### Ressourcen konfigurieren
+### Rootdaten konfigurieren (Größe in GB)
+### Ask for RootFS size (with integer validation)
 input_rootfs_size() {
     ROOTFS_SIZE=$(request_positive_integer "${MSG[rootfs]}" "2") || exit_with_log "${MSG[abort]}"
     log "${MSG[rootfs]}: $ROOTFS_SIZE GB"
 }
+
+### CPU-/RAM-Werte erfassen (optional durch Parameter erweiterbar)
+### Prompt for cores and memory
 input_resources() {
     CT_CORES=$(request_positive_integer "${MSG[cores]}" "1") || exit_with_log "${MSG[abort]}"
     CT_MEMORY=$(request_positive_integer "${MSG[memory]}" "512") || exit_with_log "${MSG[abort]}"
