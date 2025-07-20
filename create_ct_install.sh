@@ -69,6 +69,7 @@ set -u
 ################################################################################
 
 main() {
+    log "PARAM_DRYRUN ist: ${PARAM_DRYRUN:-nicht gesetzt}"
     parse_args "$@"
     check_root
     check_bash_version
@@ -89,7 +90,11 @@ main() {
     extract_laptop_key
 
     # Dry-Run? Dann Vorschau anzeigen und beenden
-    [[ "${1:-}" == "--dry-run" ]] && { dry_run_preview; exit 0; }
+    #[[ "${1:-}" == "--dry-run" ]] && { dry_run_preview; exit 0; }
+    if [[ "${PARAM_DRYRUN:-false}" == "true" ]]; then
+        dry_run_preview
+        exit 0
+    fi
 
     prepare_ssh_key_prestart
     create_container
