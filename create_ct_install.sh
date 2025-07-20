@@ -30,7 +30,7 @@ readonly STORAGE="FP1000GB"
 readonly TEMPLATE_PATH="/mnt/FP1000GB/template/cache"
 
 # shellcheck disable=SC2034
-LOGFILE="/opt/scripts/proxmox/lxc_create_$(date +'%Y%m%d_%H%M%S').log"
+LOGFILE="/root/repos/proxmox-lxc-creator/proxmox/lxc_create_$(date +'%Y%m%d_%H%M%S').log"
 readonly LOGFILE
 
 readonly NET_BRIDGE="vmbr2"
