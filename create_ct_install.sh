@@ -75,9 +75,10 @@ main() {
     parse_args "$@"
     log "Parse args abgeschlossen"
     check_root
+    echo "check_root abgeschlossen"
     log "check root abgeschlossen"
     check_bash_version
-    log "BASH_VERSINFO: ${BASH_VERSINFO[@]:-(leer)}"
+    log "BASH_VERSINFO: ${BASH_VERSyINFO[@]:-(leer)}"
     log "check_bash_version abgeschlossen"
     check_required_tools
     log "check_required_tools abgeschlossen"
