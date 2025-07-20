@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+###############################################################################
+# security.func – Sicherheitsprüfungen für Proxmox LXC Creator
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Prüft wichtige Voraussetzungen: root-Rechte, Bash-Version, Tools, Pfade.
+#
+# Description (English):
+# Ensures script prerequisites: root, bash version, required tools, paths.
+#
+###############################################################################
+
+### Prüfen, ob das Skript als root ausgeführt wird
+### Ensure script is executed as root
+check_root() {
+    if [[ "$EUID" -ne 0 ]]; then
+        echo "[ERROR] Dieses Skript muss als root ausgeführt werden."
+        echo "[ERROR] This script must be run as root."
+        exit 1
+    fi
+}
+
+### Bash-Version prüfen (mindestens 4.0 erforderlich)
+### Check bash version (must be >= 4.0)
+check_bash_version() {
+    local bash_major="${BASH_VERSINFO[0]}"
+    local bash_minor="${BASH_VERSINFO[1]}"
+    if (( bash_major < 4 )); then
+        echo "[ERROR] Bash-Version $bash_major.$bash_minor zu alt – mindestens 4.0 erforderlich."
+        exit 1
+    fi
+}
+
+### Existenz von Kommandozeilentools prüfen
+### Check presence of required CLI tools
+check_required_tools() {
+    local tools=("whiptail" "pct" "git")
+    for tool in "${tools[@]}"; do
+        if ! command -v "$tool" &>/dev/null; then
+            echo "[ERROR] Benötigtes Tool '$tool' fehlt."
+            echo "[ERROR] Required tool '$tool' is missing."
+            exit 1
+        fi
+    done
+}
+
+### Verzeichnis prüfen (z. B. TEMPLATE_PATH)
+### Check if a required directory exists
+check_directory_exists() {
+    local dirpath="$1"
+    if [[ ! -d "$dirpath" ]]; then
+        echo "[ERROR] Verzeichnis nicht gefunden: $dirpath"
+        echo "[ERROR] Directory not found: $dirpath"
+        exit 1
+    fi
+}

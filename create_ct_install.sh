@@ -52,6 +52,9 @@ CT_IPV4="" CT_IPV6="" PARAM_HOSTNAME=""
 source "$(dirname "$0")/translation.func"
 load_translations
 
+# shellcheck source=./security.func
+source "$(dirname "$0")/security.func"
+
 # shellcheck source=./logging.func
 source "$(dirname "$0")/logging.func"
 
@@ -86,6 +89,9 @@ source "$(dirname "$0")/summary.func"
 main() {
     parse_args "$@"
     check_root
+    check_bash_version
+    check_required_tools
+    check_directory_exists "$TEMPLATE_PATH"
     select_mode
     find_next_ctid
 
