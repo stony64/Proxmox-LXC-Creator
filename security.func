@@ -46,8 +46,8 @@ check_required_tools() {
     done
 }
 
-### Verzeichnis prüfen (z. B. TEMPLATE_PATH)
-### Check if a required directory exists
+### Prüft, ob ein angegebenes Verzeichnis existiert, sonst Abbruch
+### Checks if a given directory exists, invokes exit if not found
 check_directory_exists() {
     local dirpath="$1"
     if [[ ! -d "$dirpath" ]]; then

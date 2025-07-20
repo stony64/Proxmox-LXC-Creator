@@ -1,0 +1,1110 @@
+
+### cli.func
+
+#!/usr/bin/env bash
+###############################################################################
+# cli.func – CLI-Parameterverarbeitung für Proxmox LXC-Ersteller
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Diese Datei enthält Funktionen zur Verarbeitung von Kommandozeilenargumenten
+# für das Hauptskript 'create_ct_install.sh'. Unterstützt aktuell z. B.:
+#   --hostname   Übergabe eines Hostnamens zur automatischen Vorkonfiguration
+#
+# Description (English):
+# This file provides CLI argument parsing functions for use in the main
+# script 'create_ct_install.sh'. Currently supported parameters include:
+#   --hostname   Passes a hostname value for preconfiguration
+#
+###############################################################################
+
+### Kommandozeilenargumente verarbeiten (z. B. --hostname)
+### Parse CLI parameters (e.g. --hostname)
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --hostname)
+                shift
+                PARAM_HOSTNAME="$1"
+                log "Hostname übergeben: $PARAM_HOSTNAME"
+                ;;
+            *)
+                log "Unbekannter Parameter: $1"
+                ;;
+        esac
+        shift
+    done
+}
+
+
+### container.func
+
+#!/usr/bin/env bash
+###############################################################################
+# container.func – Container-Erstellung für Proxmox LXC
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Diese Datei enthält die Funktion zur Erstellung eines LXC-Containers mit pct.
+# Sie nutzt die vorbereiteten Werte aus den vorherigen Eingaben und übernimmt
+# die vollständige Erstellung, Konfiguration, Start und Tagging des Containers.
+#
+# Description (English):
+# This file contains the function for creating an LXC container using pct.
+# It consumes preconfigured global variables and executes creation, configuration,
+# automated startup and tagging of the container.
+#
+###############################################################################
+
+### LXC-Container erstellen und starten
+### Create and start LXC container
+create_container() {
+    log "${MSG[creating]}"
+
+    # Sicherstellen, dass notwendige Variablen gesetzt sind
+    if [[ -z "${OSType:-}" ]]; then
+        exit_with_log "Fehler: OSType ist nicht gesetzt. Funktion detect_ostype_from_template() muss vorher laufen."
+    fi
+
+    pct create "$CT_ID" "$OSTEMPLATE" \
+        --hostname "$CT_HOSTNAME" \
+        --arch amd64 \
+        --cores "$CT_CORES" \
+        --memory "$CT_MEMORY" \
+        --swap 512 \
+        --features nesting=1 \
+        --unprivileged 0 \
+        --net0 "name=eth0,bridge=${NET_BRIDGE},ip=${CT_IPV4}/24,gw=${GATEWAY_IPV4},ip6=${CT_IPV6}/64,gw6=${GATEWAY_IPV6}" \
+        --rootfs "$STORAGE:$ROOTFS_SIZE" \
+        --password "$CT_PASSWORD" \
+        --ostype "$OSType" \
+        --description "Erstellt am $(date '+%d.%m.%Y %H:%M:%S')"
+
+    log_success "${MSG[created]} (CT-ID: $CT_ID)"
+
+    pct start "$CT_ID"
+    log_success "${MSG[started]} (CT-ID: $CT_ID)"
+
+    pct set "$CT_ID" --tags "$OSType"
+    log "Tag gesetzt: $OSType"
+}
+
+
+### create_ct_install.sh
+
+#!/usr/bin/env bash
+###############################################################################
+# Proxmox LXC Container Creator – Hauptskript / Main Script
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Dieses Skript automatisiert die Erstellung und Konfiguration von LXC-
+# Containern auf einem Proxmox-Host. Es lädt modular externe Funktionen
+# (*.func), nutzt whiptail für interaktive Eingaben und enthält Schritte zur
+# Netzwerkkonfiguration, Passwortvergabe, SSH-Key-Setup und Systempflege.
+#
+# Description (English):
+# This script automates the creation and configuration of LXC containers on a
+# Proxmox host. It sources modular function files (*.func), uses whiptail for
+# interactive input and covers network setup, password management, SSH key
+# integration, and system updates.
+#
+###############################################################################
+
+# Exit bei Fehler, nicht gesetzten Variablen oder Pipefehler
+set -euo pipefail
+trap 'log_error "FEHLER in Zeile $LINENO / ERROR at line $LINENO"; exit 2' ERR
+
+################################################################################
+# 1 – Globale Einstellungen / Global configuration
+################################################################################
+
+readonly STORAGE="FP1000GB"
+readonly TEMPLATE_PATH="/mnt/FP1000GB/template/cache"
+
+# shellcheck disable=SC2034
+LOGFILE="/root/repos/proxmox-lxc-creator/lxc_create_$(date +'%Y%m%d_%H%M%S').log"
+readonly LOGFILE
+
+readonly NET_BRIDGE="vmbr2"
+readonly BASE_IPV4="192.168.10."
+readonly BASE_IPV6="fd00:1234:abcd:10::"
+readonly GATEWAY_IPV4="192.168.10.1"
+readonly GATEWAY_IPV6="fd00:1234:abcd:10:3ea6:2fff:fe65:8fa7"
+
+# Laufzeitvariablen / Runtime variables
+CT_ID="" CT_HOSTNAME="" CT_PASSWORD="" CT_CORES="" CT_MEMORY="" ROOTFS_SIZE=""
+TEMPLATE_FILE="" OSTEMPLATE="" OSType="" SSH_PUBKEY="" LAPTOP_KEY_COMMENT=""
+CT_IPV4="" CT_IPV6="" PARAM_HOSTNAME=""
+
+################################################################################
+# 2 – Funktionsmodule laden / Load function modules
+################################################################################
+
+# shellcheck source=./translation.func
+source "$(dirname "$0")/translation.func"
+load_translations
+
+# shellcheck source=./security.func
+source "$(dirname "$0")/security.func"
+
+# Dialogtitel/Fenster-Schlüssel (dialogs.func)
+# shellcheck source=./dialogs.func
+source "$(dirname "$0")/dialogs.func"
+
+# shellcheck source=./logging.func
+source "$(dirname "$0")/logging.func"
+
+# shellcheck source=./cli.func
+source "$(dirname "$0")/cli.func"
+
+# shellcheck source=./input.func
+source "$(dirname "$0")/input.func"
+
+# shellcheck source=./network.func
+source "$(dirname "$0")/network.func"
+
+# shellcheck source=./ssh.func
+source "$(dirname "$0")/ssh.func"
+
+# shellcheck source=./container.func
+source "$(dirname "$0")/container.func"
+
+# shellcheck source=./system.func
+source "$(dirname "$0")/system.func"
+
+# shellcheck source=./dotfiles.func
+source "$(dirname "$0")/dotfiles.func"
+
+# shellcheck source=./summary.func
+source "$(dirname "$0")/summary.func"
+
+################################################################################
+# 3 – Hauptablauf / Main workflow
+################################################################################
+
+main() {
+    parse_args "$@"
+    check_root
+    check_bash_version
+    check_required_tools
+    check_directory_exists "$TEMPLATE_PATH"
+    select_mode
+    find_next_ctid
+
+    input_hostname
+    input_password
+    select_template
+    detect_ostype_from_template
+    input_rootfs_size
+    input_resources
+    get_container_ip
+
+    ask_for_laptop_key_comment
+    extract_laptop_key
+
+    # Dry-Run? Dann Vorschau anzeigen und beenden
+    [[ "${1:-}" == "--dry-run" ]] && dry_run_preview
+
+    prepare_ssh_key_prestart
+    create_container
+    finalize_ssh_key_after_start
+    configure_locales
+    update_container
+    clone_dotfiles_in_container
+    print_summary
+}
+
+main "$@"
+
+
+### dialogs.func
+
+#!/usr/bin/env bash
+###############################################################################
+# dialogs.func – Whiptail-Dialog-Überschriften für Proxmox LXC Creator
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Dieses Modul liefert lokalisierte Titel für whiptail-Dialoge, abhängig von
+# der Sprache und dem jeweiligen Kontext.
+#
+# Description (English):
+# This module provides localized window titles for whiptail dialogs, according
+# to the current language and dialog context.
+#
+###############################################################################
+
+### Liefert die Überschrift/Titeltext für whiptail-Dialoge (mehrsprachig)
+### Returns title text for whiptail dialogs (localized)
+dialog_title() {
+    local key="$1"
+    local lang="${LANGCODE:-de}"  # Default language: German
+
+    case "$lang" in
+        de)
+            case "$key" in
+                Hostname)      echo "Hostname eingeben" ;;
+                Passwort)      echo "Passwort festlegen" ;;
+                "Container-ID") echo "Container-ID eingeben" ;;
+                Fehler)        echo "Fehler" ;;
+                Template)      echo "Template auswählen" ;;
+                RootFS)        echo "RootFS-Größe" ;;
+                CPU)           echo "CPU-Kerne" ;;
+                RAM)           echo "Arbeitsspeicher" ;;
+                IP)            echo "IP-Adresse" ;;
+                Modus)         echo "Modusauswahl" ;;
+                Update)        echo "Systemaktualisierung" ;;
+                SSH)           echo "SSH-Key-Auswahl" ;;
+                Dotfiles)      echo "Dotfiles-Setup" ;;
+                Netz)          echo "Netzwerkkonfiguration" ;;
+                Zusammenfassung) echo "Zusammenfassung" ;;
+                *)             echo "$key" ;;
+            esac
+            ;;
+        en)
+            case "$key" in
+                Hostname)      echo "Enter Hostname" ;;
+                Passwort)      echo "Set root password" ;;
+                "Container-ID") echo "Enter Container ID" ;;
+                Fehler)        echo "Error" ;;
+                Template)      echo "Select template" ;;
+                RootFS)        echo "RootFS size" ;;
+                CPU)           echo "CPU cores" ;;
+                RAM)           echo "Memory" ;;
+                IP)            echo "IP address" ;;
+                Modus)         echo "Mode selection" ;;
+                Update)        echo "System update" ;;
+                SSH)           echo "SSH key selection" ;;
+                Dotfiles)      echo "Dotfiles setup" ;;
+                Netz)          echo "Network configuration" ;;
+                Zusammenfassung) echo "Summary" ;;
+                *)             echo "$key" ;;
+            esac
+            ;;
+        *)
+            echo "$key"
+            ;;
+    esac
+}
+
+
+### dotfiles.func
+
+#!/usr/bin/env bash
+###############################################################################
+# dotfiles.func – Dotfiles-Integration für Proxmox LXC-Container
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Diese Funktion klont oder aktualisiert ein Dotfiles-Repository im LXC-Container.
+# Es wird sichergestellt, dass Git installiert ist, und vorhandene Dotfiles
+# werden per git pull aktualisiert.
+#
+# Description (English):
+# This function clones or updates a Dotfiles GitHub repository inside the LXC container.
+# Ensures Git is installed and existing dotfiles are updated via git pull.
+#
+###############################################################################
+
+### Klone oder aktualisiere Dotfiles im Container
+### Clone or update dotfiles repository inside the container
+clone_dotfiles_in_container() {
+    log "${MSG[dotfiles]}"
+
+    if pct exec "$CT_ID" -- bash -eu <<'EOF'
+apt-get update -qq
+apt-get install -y -qq git
+
+if [ ! -d /root/dotfiles/.git ]; then
+    git clone https://github.com/stony64/dotfiles.git /root/dotfiles
+else
+    cd /root/dotfiles && git pull
+fi
+EOF
+    then
+        log_success "${MSG[dotfiles_ok]}"
+    else
+        log_error "${MSG[dotfiles_fail]}"
+        exit 1
+    fi
+}
+
+
+### input.func
+
+#!/usr/bin/env bash
+###############################################################################
+# input.func – Interaktive Benutzereingaben für Proxmox LXC Creator
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Dieses Modul behandelt sämtliche interaktiven Eingaben (whiptail),
+# wie Hostname, Passwort, Container-ID, Template, Ressourcen, IP-Adressen.
+#
+# Description (English):
+# This module handles all interactive user prompts (via whiptail)
+# for hostname, password, container ID, template, resource and IP selection.
+###############################################################################
+
+###############################################################################
+# Hilfsfunktion: Lokalisierte Überschriften für whiptail-Dialoge
+###############################################################################
+dialog_title() {
+    # Verwendet ggf. Übersetzungstabelle aus MSG[], sonst Rückfall auf Eingabe
+    local key="$1"
+    case "$LANGCODE" in
+        de) printf "%s" "$key" ;;
+        en) printf "%s" "$key" ;;
+        *)  printf "%s" "$key" ;;
+    esac
+}
+
+###############################################################################
+# Interaktive Eingabefunktionen
+###############################################################################
+
+### Container-ID eingeben/anzeigen (falls nicht automatisch vergeben)
+### Prompt for custom CT-ID (optional if auto-assigned)
+input_ctid() {
+    CT_ID=$(whiptail --title "$(dialog_title Container-ID)" \
+        --inputbox "${MSG[ctid_prompt]:-Bitte Container-ID eingeben:}" 8 60 "$CT_ID" 3>&1 1>&2 2>&3) \
+        || exit_with_log "${MSG[abort]}"
+    log "${MSG[ctid_assigned]} $CT_ID"
+}
+
+### Hostname abfragen / übernehmen
+### Prompt for hostname or accept CLI parameter
+input_hostname() {
+    if [[ -n "$PARAM_HOSTNAME" ]]; then
+        CT_HOSTNAME="$PARAM_HOSTNAME"
+        log "Verwende übergebenen Hostname: $CT_HOSTNAME"
+        return
+    fi
+    while true; do
+        CT_HOSTNAME=$(whiptail --title "$(dialog_title Hostname)" \
+            --inputbox "${MSG[hostname]}" 10 60 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+        if [[ -z "$CT_HOSTNAME" ]]; then
+            whiptail --title "$(dialog_title Fehler)" \
+                --msgbox "${MSG[input_empty]}" 8 60
+            continue
+        fi
+        # Hostname-Validierung: RFC-konform
+        if [[ "$CT_HOSTNAME" =~ ^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$ ]]; then
+            break
+        else
+            whiptail --title "$(dialog_title Fehler)" \
+                --msgbox "${MSG[input_invalid]}" 8 60
+        fi
+    done
+    log "${MSG[hostname]} $CT_HOSTNAME"
+}
+
+### Passwort für root abfragen
+### Prompt for root password and validate length
+input_password() {
+    while true; do
+        CT_PASSWORD=$(whiptail --title "$(dialog_title Passwort)" \
+            --passwordbox "${MSG[password]}" 10 60 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+        if [[ -z "$CT_PASSWORD" || ${#CT_PASSWORD} -lt 8 ]]; then
+            whiptail --title "$(dialog_title Fehler)" \
+                --msgbox "${MSG[input_invalid]}" 8 60
+            continue
+        fi
+        break
+    done
+    log "${MSG[password]} wurde erfolgreich gesetzt."
+}
+
+### Template-Auswahl via whiptail-Menü
+### Display template files and let user select one
+select_template() {
+    log "${MSG[template_select]} $TEMPLATE_PATH"
+    # Find templates *.tar.zst im Verzeichnis
+    mapfile -t templates < <(find "$TEMPLATE_PATH" -maxdepth 1 -type f -name '*-standard_*.tar.zst' | sort)
+    [[ ${#templates[@]} -eq 0 ]] && exit_with_log "${MSG[template_none]}"
+    local menu_items=()
+    for tpl_path in "${templates[@]}"; do
+        tpl_file=$(basename "$tpl_path")
+        menu_items+=("$tpl_file" "")
+    done
+    TEMPLATE_FILE=$(whiptail --title "$(dialog_title Template)" \
+        --menu "${MSG[template_select]}" 20 70 10 "${menu_items[@]}" 3>&1 1>&2 2>&3) \
+        || exit_with_log "${MSG[abort]}"
+    OSTEMPLATE="${TEMPLATE_PATH}/${TEMPLATE_FILE}"
+    export OSTEMPLATE
+    log "${MSG[template_chosen]} $TEMPLATE_FILE"
+}
+
+### RootFS-Größe interaktiv abfragen (in GB)
+### Prompt for rootfs size in GB
+input_rootfs_size() {
+    ROOTFS_SIZE=$(whiptail --title "$(dialog_title RootFS)" \
+        --inputbox "${MSG[rootfs]}" 8 50 "2" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+    if ! [[ "$ROOTFS_SIZE" =~ ^[1-9][0-9]*$ ]]; then
+        whiptail --title "$(dialog_title Fehler)" \
+            --msgbox "${MSG[input_invalid]}" 8 60
+        input_rootfs_size
+        return
+    fi
+    log "${MSG[rootfs]}: $ROOTFS_SIZE GB"
+}
+
+### CPU- und RAM-Angabe erfragen
+### Prompt for CPU cores and memory allocation
+input_resources() {
+    CT_CORES=$(whiptail --title "$(dialog_title CPU)" \
+        --inputbox "${MSG[cores]}" 8 50 "1" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+    if ! [[ "$CT_CORES" =~ ^[1-9][0-9]*$ ]]; then
+        whiptail --title "$(dialog_title Fehler)" \
+            --msgbox "${MSG[input_invalid]}" 8 60
+        input_resources
+        return
+    fi
+    CT_MEMORY=$(whiptail --title "$(dialog_title RAM)" \
+        --inputbox "${MSG[memory]}" 8 50 "512" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+    if ! [[ "$CT_MEMORY" =~ ^[1-9][0-9]*$ ]]; then
+        whiptail --title "$(dialog_title Fehler)" \
+            --msgbox "${MSG[input_invalid]}" 8 60
+        input_resources
+        return
+    fi
+    log "${MSG[cores]}: $CT_CORES, ${MSG[memory]}: $CT_MEMORY MB"
+}
+
+### IP-Oktett abfragen und IP-Adressen zusammensetzen
+### Ask for last IPv4 octet and construct CT_IPV4 and CT_IPV6
+get_container_ip() {
+    local last_octet
+    while true; do
+        last_octet=$(whiptail --title "$(dialog_title IP)" \
+            --inputbox "${MSG[octet]}" 10 50 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+        if [[ "$last_octet" =~ ^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])$ ]]; then
+            break
+        fi
+        whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_invalid]}" 8 60
+    done
+    CT_IPV4="${BASE_IPV4}${last_octet}"
+    CT_IPV6="${BASE_IPV6}${last_octet}"
+    log "IPv4: $CT_IPV4, IPv6: $CT_IPV6"
+}
+
+### Beispiel für einen Modus-Auswahl-Dialog (kann modular erweitert werden)
+### Sample mode selection (extensible)
+select_mode() {
+    local mode
+    mode=$(whiptail --title "${MSG[mode_title]}" \
+        --menu "${MSG[choose_type]}" 12 60 2 \
+        "single" "${MSG[desc_single]}" \
+        "cancel" "${MSG[mode_cancel]}" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+    case "$mode" in
+        single)
+            log "${MSG[mode_selected_single]}"
+            ;;
+        cancel)
+            exit_with_log "${MSG[abort]}"
+            ;;
+        *)
+            exit_with_log "Unbekannter Modus: $mode"
+            ;;
+    esac
+}
+
+### Nächste verfügbare CT-ID finden (optional, falls nicht extern gesetzt)
+### Find next free CT-ID (if not externally managed)
+find_next_ctid() {
+    local last_id
+    last_id=$(pct list | awk 'NR>1 {print $1}' | sort -n | tail -n1)
+    if [[ -z "$last_id" ]]; then
+        CT_ID=100
+    else
+        CT_ID=$((last_id + 1))
+    fi
+    log "${MSG[ctid_assigned]} $CT_ID"
+}
+
+### OS-Typ anhand des gewählten Template-Namens automatisch erkennen
+### Detect OSType automatically from the selected template filename
+detect_ostype_from_template() {
+    local template="${TEMPLATE_FILE:-}"
+    if [[ -z "$template" ]]; then
+        exit_with_log "${MSG[ostype_unknown]:-Fehler: OS-Typ nicht erkannt!}"
+    fi
+
+    # Nutze Regex, um z. B. "debian-12-standard_12.7-1_amd64.tar.zst" → "debian" zu extrahieren
+    if [[ "$template" =~ ^([a-zA-Z0-9]+)- ]]; then
+        OSType="${BASH_REMATCH[1]}"
+    else
+        OSType=""
+        exit_with_log "${MSG[ostype_unknown]:-Fehler: OS-Typ im Template nicht erkannt!}"
+    fi
+    log "${MSG[ostype_detected]:-OS-Typ erkannt:} $OSType"
+}
+
+
+### logging.func
+
+#!/usr/bin/env bash
+###############################################################################
+# logging.func – Zentrale Logging-Funktionen für Proxmox LXC-Ersteller
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Diese Datei stellt zentrale Logging-Funktionen für das Skript bereit.
+# Protokolle werden sowohl im Terminal als auch in der LOGDATEI ausgegeben.
+#
+# Description (English):
+# This file provides central logging functions for the Proxmox LXC creator.
+# Output is written both to the console and to the log file defined in $LOGFILE.
+#
+###############################################################################
+
+### Ausgabe in Konsole und Logdatei schreiben
+### Log line to stdout and log file
+log() {
+    echo "[INFO] $1" | tee -a "$LOGFILE"
+}
+
+### Erfolgreiche Aktion loggen
+### Log successful operation
+log_success() {
+    echo "[OK]   $1" | tee -a "$LOGFILE"
+}
+
+### Fehlerhafte Aktion loggen
+### Log error to console and file
+log_error() {
+    echo "[ERROR] $1" | tee -a "$LOGFILE"
+}
+
+### Skript mit Fehlerstatus abbrechen
+### Exit script with error message
+exit_with_log() {
+    log_error "$1"
+    exit 1
+}
+
+
+### network.func
+
+#!/usr/bin/env bash
+###############################################################################
+# network.func – IP-Handling für LXC-Container
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Diese Datei enthält Funktionen zur Eingabe und Validierung von IP-Adressen,
+# insbesondere zur Vergabe eines statischen letzten Oktetts für IPv4 und IPv6
+# basierend auf einem konfigurierten Subnetz-Basiswert.
+#
+# Description (English):
+# This file contains utility functions for input and validation of IPv4/IPv6
+# addresses. It is used to assign static addresses by prompting the user for
+# the last octet of an IP address and constructing full IPv4 and IPv6 values
+# using predefined base prefixes.
+#
+###############################################################################
+
+### Eingabe: Letztes IPv4-Oktett abfragen und IP-Adressen zusammensetzen
+### Input last IPv4 octet and calculate full static addresses
+get_container_ip() {
+    local last_octet=""
+    while true; do
+        last_octet=$(whiptail --inputbox "${MSG[octet]}" 10 50 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
+
+        if validate_ip_octet "$last_octet"; then
+            break
+        else
+            whiptail --msgbox "${MSG[input_invalid]}" 8 60
+        fi
+    done
+
+    CT_IPV4="${BASE_IPV4}${last_octet}"
+    CT_IPV6="${BASE_IPV6}${last_octet}"
+    log "IPv4: $CT_IPV4, IPv6: $CT_IPV6"
+}
+
+### Validierung: Ist das angegebene Oktett im gültigen Bereich 0–255?
+### Validate an IP octet (must be 0–255, numeric, no leading zero)
+validate_ip_octet() {
+    [[ "$1" =~ ^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])$ ]]
+}
+
+
+### security.func
+
+#!/usr/bin/env bash
+###############################################################################
+# security.func – Sicherheitsprüfungen für Proxmox LXC Creator
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Prüft wichtige Voraussetzungen: root-Rechte, Bash-Version, Tools, Pfade.
+#
+# Description (English):
+# Ensures script prerequisites: root, bash version, required tools, paths.
+#
+###############################################################################
+
+### Prüfen, ob das Skript als root ausgeführt wird
+### Ensure script is executed as root
+check_root() {
+    if [[ "$EUID" -ne 0 ]]; then
+        echo "[ERROR] Dieses Skript muss als root ausgeführt werden."
+        echo "[ERROR] This script must be run as root."
+        exit 1
+    fi
+}
+
+### Bash-Version prüfen (mindestens 4.0 erforderlich)
+### Check bash version (must be >= 4.0)
+check_bash_version() {
+    local bash_major="${BASH_VERSINFO[0]}"
+    local bash_minor="${BASH_VERSINFO[1]}"
+    if (( bash_major < 4 )); then
+        echo "[ERROR] Bash-Version $bash_major.$bash_minor zu alt – mindestens 4.0 erforderlich."
+        exit 1
+    fi
+}
+
+### Existenz von Kommandozeilentools prüfen
+### Check presence of required CLI tools
+check_required_tools() {
+    local tools=("whiptail" "pct" "git")
+    for tool in "${tools[@]}"; do
+        if ! command -v "$tool" &>/dev/null; then
+            echo "[ERROR] Benötigtes Tool '$tool' fehlt."
+            echo "[ERROR] Required tool '$tool' is missing."
+            exit 1
+        fi
+    done
+}
+
+### Verzeichnis prüfen (z. B. TEMPLATE_PATH)
+### Check if a required directory exists
+check_directory_exists() {
+    local dirpath="$1"
+    if [[ ! -d "$dirpath" ]]; then
+        echo "[ERROR] Verzeichnis nicht gefunden: $dirpath"
+        echo "[ERROR] Directory not found: $dirpath"
+        exit 1
+    fi
+}
+
+
+### ssh.func
+
+#!/usr/bin/env bash
+###############################################################################
+# ssh.func – SSH-Key-Suche und Setup für Proxmox LXC
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Diese Datei enthält Funktionen zur Suche, Prüfung und Bereitstellung
+# eines SSH Public Keys anhand eines Kommentars. Der Key wird entweder vor dem
+# Start direkt ins Root-FS geschrieben oder nach dem Start via pct exec injiziert.
+#
+# Description (English):
+# This module handles locating, validating, and preparing a public SSH key
+# based on a comment string. The key is either placed directly into the root
+# filesystem or injected into the container after startup.
+#
+###############################################################################
+
+### Kommentarzeichenkette vom Nutzer zur SSH-Key-Suche abfragen
+### Ask user for identifying comment of SSH public key
+ask_for_laptop_key_comment() {
+    LAPTOP_KEY_COMMENT=$(whiptail --title "$(dialog_title SSH)" \
+        --inputbox "${MSG[ssh_comment_prompt]}" 10 70 "" 3>&1 1>&2 2>&3) \
+        || exit_with_log "${MSG[abort]}"
+
+    [[ -z "$LAPTOP_KEY_COMMENT" ]] && exit_with_log "${MSG[input_empty]}"
+    log "${MSG[ssh_lookup]}: $LAPTOP_KEY_COMMENT"
+}
+
+### SSH-Key aus authorized_keys suchen und lokal in Datei zwischenspeichern
+### Locate matching SSH key by comment and write to temp file
+extract_laptop_key() {
+    local authfile="/root/.ssh/authorized_keys"
+    [[ ! -f "$authfile" ]] && exit_with_log "authorized_keys nicht gefunden unter: $authfile"
+
+    local key_match
+    key_match=$(grep -m1 "$LAPTOP_KEY_COMMENT" "$authfile" || true)
+
+    if [[ "$key_match" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
+        SSH_PUBKEY=$(mktemp "/tmp/lxc_ssh_${CT_ID}_XXXXXXXX.pub")
+        echo "$key_match" > "$SSH_PUBKEY"
+        chmod 600 "$SSH_PUBKEY"
+        log_success "${MSG[ssh_found]}"
+    else
+        whiptail --title "$(dialog_title SSH)" --msgbox "${MSG[ssh_not_found]}" 8 60
+        SSH_PUBKEY=""
+    fi
+}
+
+### Key vor dem Start direkt in das RootFS des Containers einfügen
+### Copy key directly into root FS before container is started
+prepare_ssh_key_prestart() {
+    if [[ -n "$SSH_PUBKEY" && -f "$SSH_PUBKEY" ]]; then
+        local ssh_dir="/var/lib/lxc/$CT_ID/rootfs/root/.ssh"
+        mkdir -p "$ssh_dir"
+        cp "$SSH_PUBKEY" "$ssh_dir/authorized_keys"
+        chmod 700 "$ssh_dir"
+        chmod 600 "$ssh_dir/authorized_keys"
+        chown root:root "$ssh_dir" "$ssh_dir/authorized_keys"
+        log "${MSG[ssh_setup]}"
+    fi
+}
+
+### SSH-Key nach dem Start in den laufenden Container injizieren
+### Push SSH key into running container, fallback to password auth if missing
+finalize_ssh_key_after_start() {
+    if [[ -n "$SSH_PUBKEY" && -f "$SSH_PUBKEY" ]]; then
+        pct exec "$CT_ID" -- bash -c '
+            mkdir -p /root/.ssh
+            cat > /root/.ssh/authorized_keys < /dev/stdin
+            chmod 600 /root/.ssh/authorized_keys
+            chown root:root /root/.ssh/authorized_keys
+        ' < "$SSH_PUBKEY"
+
+        log_success "${MSG[ssh_setup]}"
+    else
+        # Fallback aktivieren: Root-Login via Passwort erlauben
+        pct exec "$CT_ID" -- bash -c '
+            sed -i "s/^#*PermitRootLogin.*/PermitRootLogin yes/" /etc/ssh/sshd_config
+            sed -i "s/^#*PasswordAuthentication.*/PasswordAuthentication yes/" /etc/ssh/sshd_config
+            systemctl restart ssh || systemctl restart sshd || true
+        '
+
+        log "${MSG[ssh_temp]}"
+    fi
+}
+
+
+### summary.func
+
+#!/usr/bin/env bash
+###############################################################################
+# summary.func – Abschlussanzeige / Containerdaten
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Diese Datei zeigt nach Abschluss der Container-Erstellung die wichtigsten
+# Parameter in strukturierter Form zur sofortigen Übersicht an.
+#
+# Description (English):
+# This module prints a structured summary of all relevant container values
+# after successful creation and configuration — for CLI and documentation.
+#
+###############################################################################
+
+### Übersicht zum erstellten Container ausgeben
+### Print summary of the created container
+print_summary() {
+    echo
+    echo "Container erfolgreich erstellt"
+    echo "----------------------------------------"
+    echo "CT-ID:          $CT_ID"
+    echo "Hostname:       $CT_HOSTNAME"
+    echo "OS-Typ:         ${OSType:-<nicht gesetzt>}"     # shellcheck disable=SC2154
+    echo "Template:       $TEMPLATE_FILE"
+    echo "CPU-Kerne:      $CT_CORES"
+    echo "RAM:            ${CT_MEMORY} MB"
+    echo "RootFS:         ${ROOTFS_SIZE} GB"
+    echo "IPv4-Adresse:   ${CT_IPV4}"
+    echo "IPv4-Gateway:   ${GATEWAY_IPV4}"
+    echo "IPv6-Adresse:   ${CT_IPV6}"
+    echo "IPv6-Gateway:   ${GATEWAY_IPV6}"
+    echo "----------------------------------------"
+    echo "Zugriff: pct enter $CT_ID  oder  ssh root@${CT_IPV4}"
+    echo
+}
+
+
+### system.func
+
+#!/usr/bin/env bash
+###############################################################################
+# system.func – Systempflege und Konfiguration im LXC-Container
+# Version:    2.7.5
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+# Diese Datei enthält Funktionen zur Systemkonfiguration innerhalb eines
+# LXC-Containers nach dessen Erstellung. Dazu gehören Locale-, Zeitzonen- und
+# APT-Update-Prozesse.
+#
+# Description (English):
+# This file provides post-creation system configuration steps for LXC containers,
+# such as setting locales and timezone, and running APT updates.
+#
+###############################################################################
+
+### Locales und Zeitzone im Container setzen
+### Configure system locales and timezone in the container
+configure_locales() {
+    log "${MSG[locales]}"
+    log "${MSG[timezone]}"
+
+    if pct exec "$CT_ID" -- apt-get install -y -qq locales tzdata &&
+       pct exec "$CT_ID" -- bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; echo 'de_DE.UTF-8 UTF-8' >> /etc/locale.gen; locale-gen" &&
+       pct exec "$CT_ID" -- update-locale LANG=de_DE.UTF-8 &&
+       pct exec "$CT_ID" -- ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime &&
+       pct exec "$CT_ID" -- bash -c 'echo "Europe/Berlin" > /etc/timezone'
+    then
+        log_success "${MSG[locales_ok]}"
+        log_success "${MSG[timezone_ok]}"
+    else
+        log_error "${MSG[locales_fail]}"
+        log_error "${MSG[timezone_fail]}"
+        exit 1
+    fi
+}
+
+### APT-Update im Container durchführen
+### Run apt update/upgrade/autoremove/clean in the container
+update_container() {
+    log "${MSG[update]}"
+
+    if pct exec "$CT_ID" -- bash -c '
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq &&
+        apt-get upgrade -y -qq &&
+        apt-get autoremove -y -qq &&
+        apt-get clean -qq
+    '
+    then
+        log_success "${MSG[update_ok]}"
+    else
+        log_error "${MSG[update_fail]}"
+        exit 1
+    fi
+}
+
+
+### translation.func
+
+#!/usr/bin/env bash
+###############################################################################
+# translation.func – Mehrsprachigkeit für Proxmox LXC-Container-Ersteller
+# Version:    2.3
+# Datum:      2025-07-21
+#
+# Beschreibung (Deutsch):
+#   Initialisiert das mehrsprachige Nachrichtensystem für das Hauptskript
+#   create_ct_install.sh. Unterstützt Deutsch und Englisch.
+#
+# Description (English):
+#   Initializes the multilingual message system used in create_ct_install.sh.
+#   Languages supported: German (de) and English (en).
+#
+###############################################################################
+
+# shellcheck disable=SC2034
+declare -A MSG
+
+### Sprache interaktiv laden oder Englisch als Fallback setzen
+load_translations() {
+    if ! command -v whiptail &>/dev/null; then
+        echo "WARNUNG: 'whiptail' fehlt – Standard: Englisch" >&2
+        set_default_english
+        return
+    fi
+
+    if [[ ! -t 1 ]]; then
+        echo "WARNUNG: Kein Terminal erkannt – Standard: Englisch" >&2
+        set_default_english
+        return
+    fi
+
+    local lang
+    lang=$(whiptail --menu "Sprache wählen / Choose language:" 12 40 2 \
+        "de" "Deutsch" \
+        "en" "English" 3>&1 1>&2 2>&3)
+
+    if [[ $? -ne 0 || -z "$lang" ]]; then
+        whiptail --title "Abbruch / Cancelled" \
+            --msgbox "Keine Auswahl – Standard: Englisch." 8 60 || echo "Fallback: Englisch aktiviert."
+        set_default_english
+        return
+    fi
+
+    export LANGCODE="$lang"
+
+    if [[ "$lang" == "de" ]]; then
+        set_default_german
+    else
+        set_default_english
+    fi
+}
+
+###############################################################################
+# Deutsch
+###############################################################################
+set_default_german() {
+    ### Allgemein & Fehler
+    MSG[abort]="Vorgang abgebrochen."
+    MSG[input_empty]="Eingabe darf nicht leer sein."
+    MSG[input_invalid]="Ungültige Eingabe. Bitte erneut versuchen."
+
+    ### Root-Check
+    MSG[root_required]="Dieses Skript muss als root ausgeführt werden."
+    MSG[root_ok]="Root-Rechte bestätigt."
+
+    ### Moduswahl
+    MSG[mode_title]="Moduswahl"
+    MSG[choose_type]="Bitte Container-Modus wählen:"
+    MSG[mode_single]="Einzeln"
+    MSG[mode_cancel]="Abbrechen"
+    MSG[desc_single]="Einen einzelnen Container anlegen"
+    MSG[mode_selected_single]="Einzelmodus gewählt."
+
+    ### Hostname & Passwort
+    MSG[hostname]="Hostname für den Container eingeben:"
+    MSG[password]="Root-Passwort (min. 8 Zeichen):"
+
+    ### Container-ID
+    MSG[ctid_assigned]="Vergebene Container-ID:"
+    MSG[ctid_none]="Keine freie CT-ID gefunden!"
+
+    ### Template & OS
+    MSG[template_select]="Template auswählen:"
+    MSG[template_none]="Keine Template-Dateien gefunden!"
+    MSG[template_chosen]="Verwendetes Template: %s"
+    MSG[ostype_detected]="OS-Typ erkannt:"
+    MSG[ostype_unknown]="Fehler: OS-Typ im Template-Dateinamen nicht erkannt."
+
+    ### Ressourcen
+    MSG[rootfs]="RootFS-Größe (GB)"
+    MSG[cores]="CPU-Kerne"
+    MSG[memory]="Arbeitsspeicher (MB)"
+
+    ### Netzwerk / IP
+    MSG[octet]="Letzte Stelle der IPv4-Adresse eingeben (z. B. 42):"
+
+    ### Container-Erstellung
+    MSG[creating]="Container wird erstellt..."
+    MSG[created]="Container wurde erfolgreich erstellt."
+    MSG[started]="Container wurde gestartet."
+
+    ### SSH
+    MSG[ssh_comment_prompt]="SSH-Key-Kommentar eingeben (z. B. user@laptop):"
+    MSG[ssh_lookup]="Suche SSH-Key mit Kommentar"
+    MSG[ssh_found]="SSH-Key wurde erkannt und übernommen."
+    MSG[ssh_not_found]="Kein passender SSH-Key mit Kommentar gefunden."
+    MSG[ssh_setup]="SSH-Key erfolgreich im Container gespeichert."
+    MSG[ssh_temp]="Kein SSH-Key – Root-Login per Passwort bleibt aktiv."
+
+    ### Systemkonfiguration
+    MSG[locales]="Locales und Systemsprachen werden installiert..."
+    MSG[locales_ok]="Locales erfolgreich eingerichtet."
+    MSG[locales_fail]="Fehler bei der Einrichtung der Locales!"
+    MSG[timezone]="Setze Zeitzone auf Europe/Berlin..."
+    MSG[timezone_ok]="Zeitzone erfolgreich gesetzt."
+    MSG[timezone_fail]="Fehler beim Setzen der Zeitzone!"
+
+    ### APT-Update
+    MSG[update]="Führe Systemupdate im Container durch..."
+    MSG[update_ok]="Container erfolgreich aktualisiert."
+    MSG[update_fail]="Systemupdate im Container fehlgeschlagen."
+
+    ### Dotfiles
+    MSG[dotfiles]="Dotfiles werden im Container geklont..."
+    MSG[dotfiles_ok]="Dotfiles erfolgreich aktualisiert."
+    MSG[dotfiles_fail]="Fehler beim Klonen der Dotfiles!"
+
+    ### Vorschau
+    MSG[preview]="[Vorschau] – Kein Container wird erstellt."
+}
+
+###############################################################################
+# Englisch
+###############################################################################
+set_default_english() {
+    ### General & Errors
+    MSG[abort]="Operation aborted."
+    MSG[input_empty]="Input must not be empty."
+    MSG[input_invalid]="Invalid input. Please try again."
+
+    ### Root check
+    MSG[root_required]="This script must be run as root."
+    MSG[root_ok]="Root access confirmed."
+
+    ### Mode selection
+    MSG[mode_title]="Mode selection"
+    MSG[choose_type]="Select container mode:"
+    MSG[mode_single]="Single"
+    MSG[mode_cancel]="Cancel"
+    MSG[desc_single]="Create a single container"
+    MSG[mode_selected_single]="Single mode selected."
+
+    ### Hostname & password
+    MSG[hostname]="Enter container hostname:"
+    MSG[password]="Root password (min. 8 characters):"
+
+    ### Container ID
+    MSG[ctid_assigned]="Assigned container ID:"
+    MSG[ctid_none]="No free container ID found!"
+
+    ### Template & OS
+    MSG[template_select]="Select template:"
+    MSG[template_none]="No template files found!"
+    MSG[template_chosen]="Selected template: %s"
+    MSG[ostype_detected]="OS type detected:"
+    MSG[ostype_unknown]="Error: OS type not detected from filename."
+
+    ### Resources
+    MSG[rootfs]="Root filesystem size (GB)"
+    MSG[cores]="CPU cores"
+    MSG[memory]="Memory (MB)"
+
+    ### Network / IP
+    MSG[octet]="Enter the last octet of the IPv4 address (e.g. 42):"
+
+    ### Container creation
+    MSG[creating]="Creating container..."
+    MSG[created]="Container created successfully."
+    MSG[started]="Container has been started."
+
+    ### SSH
+    MSG[ssh_comment_prompt]="Enter comment of SSH public key (e.g. user@laptop):"
+    MSG[ssh_lookup]="Looking for SSH key with comment"
+    MSG[ssh_found]="SSH key found and applied."
+    MSG[ssh_not_found]="No matching SSH key found."
+    MSG[ssh_setup]="SSH key successfully saved to container."
+    MSG[ssh_temp]="No valid SSH key – root login via password remains active."
+
+    ### System configuration
+    MSG[locales]="Installing system locales and languages..."
+    MSG[locales_ok]="Locales successfully configured."
+    MSG[locales_fail]="Locale configuration failed!"
+    MSG[timezone]="Setting timezone to Europe/Berlin..."
+    MSG[timezone_ok]="Timezone successfully set."
+    MSG[timezone_fail]="Failed to apply timezone setting!"
+
+    ### APT update
+    MSG[update]="Running system update in container..."
+    MSG[update_ok]="Container updated successfully."
+    MSG[update_fail]="System update failed in container."
+
+    ### Dotfiles
+    MSG[dotfiles]="Cloning dotfiles inside the container..."
+    MSG[dotfiles_ok]="Dotfiles cloned successfully."
+    MSG[dotfiles_fail]="Failed to clone dotfiles."
+
+    ### Preview
+    MSG[preview]="[Preview] – No container will be created."
+}
+
+

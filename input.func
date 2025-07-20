@@ -5,41 +5,28 @@
 # Datum:      2025-07-21
 #
 # Beschreibung (Deutsch):
-# Dieses Modul behandelt sämtliche interaktiven Eingaben (whiptail),
-# wie Hostname, Passwort, Container-ID, Template, Ressourcen, IP-Adressen.
+# Dieses Modul behandelt alle interaktiven whiptail-Eingaben, z. B.
+# Hostname, Passwort, Container-ID, Template, RootFS, Ressourcen und IP.
 #
 # Description (English):
-# This module handles all interactive user prompts (via whiptail)
-# for hostname, password, container ID, template, resource and IP selection.
+# This module manages all interactive user prompts via whiptail, including
+# hostname, password, container ID, template, rootfs, resources, and IP address.
 ###############################################################################
 
 ###############################################################################
-# Hilfsfunktion: Lokalisierte Überschriften für whiptail-Dialoge
-###############################################################################
-dialog_title() {
-    # Verwendet ggf. Übersetzungstabelle aus MSG[], sonst Rückfall auf Eingabe
-    local key="$1"
-    case "$LANGCODE" in
-        de) printf "%s" "$key" ;;
-        en) printf "%s" "$key" ;;
-        *)  printf "%s" "$key" ;;
-    esac
-}
-
-###############################################################################
-# Interaktive Eingabefunktionen
+# Interaktive Eingabefunktionen für den Installer-Workflow
 ###############################################################################
 
-### Container-ID eingeben/anzeigen (falls nicht automatisch vergeben)
+### Container-ID eingeben/anzeigen (optional bei automatischer Vergabe)
 ### Prompt for custom CT-ID (optional if auto-assigned)
 input_ctid() {
-    CT_ID=$(whiptail --title "$(dialog_title Container-ID)" \
+    CT_ID=$(whiptail --title "$(dialog_title "Container-ID")" \
         --inputbox "${MSG[ctid_prompt]:-Bitte Container-ID eingeben:}" 8 60 "$CT_ID" 3>&1 1>&2 2>&3) \
         || exit_with_log "${MSG[abort]}"
     log "${MSG[ctid_assigned]} $CT_ID"
 }
 
-### Hostname abfragen / übernehmen
+### Hostname interaktiv abfragen oder CLI-Wert übernehmen
 ### Prompt for hostname or accept CLI parameter
 input_hostname() {
     if [[ -n "$PARAM_HOSTNAME" ]]; then
@@ -51,30 +38,27 @@ input_hostname() {
         CT_HOSTNAME=$(whiptail --title "$(dialog_title Hostname)" \
             --inputbox "${MSG[hostname]}" 10 60 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
         if [[ -z "$CT_HOSTNAME" ]]; then
-            whiptail --title "$(dialog_title Fehler)" \
-                --msgbox "${MSG[input_empty]}" 8 60
+            whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_empty]}" 8 60
             continue
         fi
-        # Hostname-Validierung: RFC-konform
+        # Hostname nach RFC prüfen
         if [[ "$CT_HOSTNAME" =~ ^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$ ]]; then
             break
         else
-            whiptail --title "$(dialog_title Fehler)" \
-                --msgbox "${MSG[input_invalid]}" 8 60
+            whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_invalid]}" 8 60
         fi
     done
     log "${MSG[hostname]} $CT_HOSTNAME"
 }
 
-### Passwort für root abfragen
-### Prompt for root password and validate length
+### Passwort sicher abfragen (mindestens 8 Zeichen)
+### Prompt for root password and validate minimum length
 input_password() {
     while true; do
         CT_PASSWORD=$(whiptail --title "$(dialog_title Passwort)" \
             --passwordbox "${MSG[password]}" 10 60 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
         if [[ -z "$CT_PASSWORD" || ${#CT_PASSWORD} -lt 8 ]]; then
-            whiptail --title "$(dialog_title Fehler)" \
-                --msgbox "${MSG[input_invalid]}" 8 60
+            whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_invalid]}" 8 60
             continue
         fi
         break
@@ -82,11 +66,10 @@ input_password() {
     log "${MSG[password]} wurde erfolgreich gesetzt."
 }
 
-### Template-Auswahl via whiptail-Menü
-### Display template files and let user select one
+### Template-Auswahl via Menü
+### Display template list and let user select one
 select_template() {
     log "${MSG[template_select]} $TEMPLATE_PATH"
-    # Find templates *.tar.zst im Verzeichnis
     mapfile -t templates < <(find "$TEMPLATE_PATH" -maxdepth 1 -type f -name '*-standard_*.tar.zst' | sort)
     [[ ${#templates[@]} -eq 0 ]] && exit_with_log "${MSG[template_none]}"
     local menu_items=()
@@ -99,39 +82,36 @@ select_template() {
         || exit_with_log "${MSG[abort]}"
     OSTEMPLATE="${TEMPLATE_PATH}/${TEMPLATE_FILE}"
     export OSTEMPLATE
-    log "${MSG[template_chosen]} $TEMPLATE_FILE"
+    log "${MSG[template_chosen]/%s/$TEMPLATE_FILE}"
 }
 
-### RootFS-Größe interaktiv abfragen (in GB)
-### Prompt for rootfs size in GB
+### RootFS-Größe interaktiv erfragen (in GB, Ganzzahl)
+### Prompt for root filesystem size in GB (integer)
 input_rootfs_size() {
     ROOTFS_SIZE=$(whiptail --title "$(dialog_title RootFS)" \
         --inputbox "${MSG[rootfs]}" 8 50 "2" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
     if ! [[ "$ROOTFS_SIZE" =~ ^[1-9][0-9]*$ ]]; then
-        whiptail --title "$(dialog_title Fehler)" \
-            --msgbox "${MSG[input_invalid]}" 8 60
+        whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_invalid]}" 8 60
         input_rootfs_size
         return
     fi
     log "${MSG[rootfs]}: $ROOTFS_SIZE GB"
 }
 
-### CPU- und RAM-Angabe erfragen
-### Prompt for CPU cores and memory allocation
+### CPU-/RAM-Ressourcen interaktiv abfragen
+### Prompt for CPU cores and RAM allocation
 input_resources() {
     CT_CORES=$(whiptail --title "$(dialog_title CPU)" \
         --inputbox "${MSG[cores]}" 8 50 "1" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
     if ! [[ "$CT_CORES" =~ ^[1-9][0-9]*$ ]]; then
-        whiptail --title "$(dialog_title Fehler)" \
-            --msgbox "${MSG[input_invalid]}" 8 60
+        whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_invalid]}" 8 60
         input_resources
         return
     fi
     CT_MEMORY=$(whiptail --title "$(dialog_title RAM)" \
         --inputbox "${MSG[memory]}" 8 50 "512" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
     if ! [[ "$CT_MEMORY" =~ ^[1-9][0-9]*$ ]]; then
-        whiptail --title "$(dialog_title Fehler)" \
-            --msgbox "${MSG[input_invalid]}" 8 60
+        whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_invalid]}" 8 60
         input_resources
         return
     fi
@@ -139,13 +119,13 @@ input_resources() {
 }
 
 ### IP-Oktett abfragen und IP-Adressen zusammensetzen
-### Ask for last IPv4 octet and construct CT_IPV4 and CT_IPV6
+### Ask for last IPv4 octet and construct IPv4/IPv6 address variables
 get_container_ip() {
     local last_octet
     while true; do
         last_octet=$(whiptail --title "$(dialog_title IP)" \
             --inputbox "${MSG[octet]}" 10 50 "" 3>&1 1>&2 2>&3) || exit_with_log "${MSG[abort]}"
-        if [[ "$last_octet" =~ ^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])$ ]]; then
+        if validate_ip_octet "$last_octet"; then
             break
         fi
         whiptail --title "$(dialog_title Fehler)" --msgbox "${MSG[input_invalid]}" 8 60
@@ -155,8 +135,8 @@ get_container_ip() {
     log "IPv4: $CT_IPV4, IPv6: $CT_IPV6"
 }
 
-### Beispiel für einen Modus-Auswahl-Dialog (kann modular erweitert werden)
-### Sample mode selection (extensible)
+### Modusauswahl (derzeit Einzelmodus/Abbruch)
+### Select mode (currently only single/cancel)
 select_mode() {
     local mode
     mode=$(whiptail --title "${MSG[mode_title]}" \
@@ -176,8 +156,8 @@ select_mode() {
     esac
 }
 
-### Nächste verfügbare CT-ID finden (optional, falls nicht extern gesetzt)
-### Find next free CT-ID (if not externally managed)
+### Nächste freie LXC-Container-ID finden
+### Find next free LXC container ID
 find_next_ctid() {
     local last_id
     last_id=$(pct list | awk 'NR>1 {print $1}' | sort -n | tail -n1)
@@ -189,15 +169,13 @@ find_next_ctid() {
     log "${MSG[ctid_assigned]} $CT_ID"
 }
 
-### OS-Typ anhand des gewählten Template-Namens automatisch erkennen
-### Detect OSType automatically from the selected template filename
+### OS-Typ aus Template-Filename bestimmen
+### Detect OSType automatically from selected template filename
 detect_ostype_from_template() {
     local template="${TEMPLATE_FILE:-}"
     if [[ -z "$template" ]]; then
         exit_with_log "${MSG[ostype_unknown]:-Fehler: OS-Typ nicht erkannt!}"
     fi
-
-    # Nutze Regex, um z. B. "debian-12-standard_12.7-1_amd64.tar.zst" → "debian" zu extrahieren
     if [[ "$template" =~ ^([a-zA-Z0-9]+)- ]]; then
         OSType="${BASH_REMATCH[1]}"
     else
@@ -205,4 +183,10 @@ detect_ostype_from_template() {
         exit_with_log "${MSG[ostype_unknown]:-Fehler: OS-Typ im Template nicht erkannt!}"
     fi
     log "${MSG[ostype_detected]:-OS-Typ erkannt:} $OSType"
+}
+
+### Prüft, ob eine Zeichenkette ein gültiges IP-Oktett ist (0–255)
+### Validate if a string is a valid IP octet (returns 0=valid, 1=invalid)
+validate_ip_octet() {
+    [[ "$1" =~ ^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5])$ ]]
 }

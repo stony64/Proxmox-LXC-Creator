@@ -15,6 +15,7 @@
 *.swp              # Vim-Swapdateien / Vim swap files
 *~                 # Bash-Backup (automatisch) / Editor backup (~)
 *.sh~              # Backup-Versionen von .sh-Dateien / .sh backups
+*.txt
 
 ###############################################################################
 # Projektspezifische Verzeichnisse (Backups usw.)

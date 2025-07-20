@@ -14,8 +14,8 @@
 #
 ###############################################################################
 
-### Übersicht zum erstellten Container ausgeben
-### Print summary of the created container
+### Gibt eine Übersicht der CT-Parameter nach Erstellung auf Konsole aus
+### Prints container summary to console after creation
 print_summary() {
     echo
     echo "Container erfolgreich erstellt"

@@ -32,8 +32,8 @@ log_error() {
     echo "[ERROR] $1" | tee -a "$LOGFILE"
 }
 
-### Skript mit Fehlerstatus abbrechen
-### Exit script with error message
+### Loggt Fehlermeldung und bricht Skript ab (DE/EN)
+### Logs error message and exits script
 exit_with_log() {
     log_error "$1"
     exit 1
