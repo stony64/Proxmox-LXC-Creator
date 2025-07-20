@@ -17,8 +17,14 @@
 ### Ausgabe in Konsole und Logdatei schreiben
 ### Log line to stdout and log file
 log() {
-    echo "[INFO] $1" | tee -a "$LOGFILE"
+    local message="[INFO] $1"
+    if [[ -n "${LOGFILE:-}" && -w "$(dirname "$LOGFILE")" ]]; then
+        echo "$message" | tee -a "$LOGFILE"
+    else
+        echo "$message"
+    fi
 }
+
 
 ### Erfolgreiche Aktion loggen
 ### Log successful operation
