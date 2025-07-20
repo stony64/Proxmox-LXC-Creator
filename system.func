@@ -17,23 +17,51 @@
 
 ### Locales und Zeitzone im Container setzen
 ### Configure system locales and timezone in the container
+#configure_locales() {
+#    log "${MSG[locales]}"
+#    log "${MSG[timezone]}"
+#
+#    if pct exec "$CT_ID" -- apt-get install -y -qq locales tzdata &&
+#       pct exec "$CT_ID" -- bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; echo 'de_DE.UTF-8 UTF-8' >> /etc/locale.gen; locale-gen" &&
+#       pct exec "$CT_ID" -- update-locale LANG=de_DE.UTF-8 &&
+#       pct exec "$CT_ID" -- ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime &&
+#       pct exec "$CT_ID" -- bash -c 'echo "Europe/Berlin" > /etc/timezone'
+#    then
+#        log_success "${MSG[locales_ok]}"
+#        log_success "${MSG[timezone_ok]}"
+#    else
+#        log_error "${MSG[locales_fail]}"
+#        log_error "${MSG[timezone_fail]}"
+#        exit 1
+#    fi
+#}
+
 configure_locales() {
     log "${MSG[locales]}"
     log "${MSG[timezone]}"
 
-    if pct exec "$CT_ID" -- apt-get install -y -qq locales tzdata &&
-       pct exec "$CT_ID" -- bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; echo 'de_DE.UTF-8 UTF-8' >> /etc/locale.gen; locale-gen" &&
-       pct exec "$CT_ID" -- update-locale LANG=de_DE.UTF-8 &&
-       pct exec "$CT_ID" -- ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime &&
-       pct exec "$CT_ID" -- bash -c 'echo "Europe/Berlin" > /etc/timezone'
-    then
-        log_success "${MSG[locales_ok]}"
-        log_success "${MSG[timezone_ok]}"
-    else
-        log_error "${MSG[locales_fail]}"
-        log_error "${MSG[timezone_fail]}"
-        exit 1
+    if ! pct exec "$CT_ID" -- apt-get install -y -qq locales tzdata; then
+        exit_with_log "Locales-Install fehlgeschlagen"
     fi
+
+    if ! pct exec "$CT_ID" -- bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; echo 'de_DE.UTF-8 UTF-8' >> /etc/locale.gen; locale-gen"; then
+        exit_with_log "locale-gen fehlgeschlagen"
+    fi
+
+    if ! pct exec "$CT_ID" -- update-locale LANG=de_DE.UTF-8; then
+        exit_with_log "update-locale fehlgeschlagen"
+    fi
+
+    if ! pct exec "$CT_ID" -- ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime; then
+        exit_with_log "Symlink für Zeitzone fehlgeschlagen"
+    fi
+
+    if ! pct exec "$CT_ID" -- bash -c 'echo "Europe/Berlin" > /etc/timezone'; then
+        exit_with_log "Schreiben der /etc/timezone fehlgeschlagen"
+    fi
+
+    log_success "${MSG[locales_ok]}"
+    log_success "${MSG[timezone_ok]}"
 }
 
 ### APT-Update im Container durchführen

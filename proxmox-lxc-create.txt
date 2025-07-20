@@ -139,6 +139,7 @@ create_container() {
 ### create_ct_install.sh
 
 #!/usr/bin/env bash
+set +x
 ###############################################################################
 # Proxmox LXC Container Creator – Hauptskript / Main Script
 # Version:    2.7.5
@@ -191,9 +192,10 @@ source "$(dirname "$0")/logging.func"
 trap 'log_error "FEHLER in Zeile $LINENO / ERROR at line $LINENO"; exit 2' ERR
 
 # shellcheck source=./translation.func
-set +ux
+set +u
 source "$(dirname "$0")/translation.func"
 load_translations
+echo "LOGFILE = '${LOGFILE:-NICHT GESETZT}'"
 log "Sprache geladen: $LANGCODE"
 log "MSG[mode_title]: '${MSG[mode_title]}'"
 
@@ -213,9 +215,10 @@ main() {
     parse_args "$@"
     log "Parse args abgeschlossen"
     check_root
+    echo "check_root abgeschlossen"
     log "check root abgeschlossen"
     check_bash_version
-    log "BASH_VERSINFO: ${BASH_VERSINFO[@]:-(leer)}"
+    log "BASH_VERSINFO: ${BASH_VERSyINFO[@]:-(leer)}"
     log "check_bash_version abgeschlossen"
     check_required_tools
     log "check_required_tools abgeschlossen"
@@ -267,8 +270,8 @@ main() {
     print_summary
     log "print_summary abgeschlossen"
 }
-set -x
 main "$@"
+set -x
 
 
 ### dialogs.func
@@ -605,8 +608,14 @@ detect_ostype_from_template() {
 ### Ausgabe in Konsole und Logdatei schreiben
 ### Log line to stdout and log file
 log() {
-    echo "[INFO] $1" | tee -a "$LOGFILE"
+    local message="[INFO] $1"
+    if [[ -n "${LOGFILE:-}" && -w "$(dirname "$LOGFILE")" ]]; then
+        echo "$message" | tee -a "$LOGFILE"
+    else
+        echo "$message"
+    fi
 }
+
 
 ### Erfolgreiche Aktion loggen
 ### Log successful operation
@@ -753,8 +762,27 @@ echo "Done! Bundle file: $OUTPUT"
 
 ### Prüfen, ob das Skript als root ausgeführt wird
 ### Ensure script is executed as root
+#check_root() {
+#    echo "DEBUG: EUID='$EUID'"
+#    [[ "$EUID" -ne 0 ]] && exit_with_log "${MSG[root_required]}"
+##    [[ "$EUID" -ne 0 ]] && exit_with_log "Dieses Skript muss als root ausgeführt werden."
+#}
 check_root() {
-    [[ "$EUID" -ne 0 ]] && exit_with_log "Dieses Skript muss als root ausgeführt werden."
+    local euid="${EUID:-}"
+
+    echo "DEBUG: EUID='$euid'"
+
+    if [[ -z "$euid" ]]; then
+        exit_with_log "EUID nicht verfügbar – Bash-Umgebung fehlerhaft?"
+    fi
+
+    if ! [[ "$euid" =~ ^[0-9]+$ ]]; then
+        exit_with_log "Ungültiger EUID-Wert: '$euid'"
+    fi
+
+    if (( euid != 0 )); then
+        exit_with_log "${MSG[root_required]:-Root-Rechte erforderlich.}"
+    fi
 }
 
 check_bash_version() {
