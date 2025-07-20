@@ -186,55 +186,87 @@ CT_IPV4="" CT_IPV6="" PARAM_HOSTNAME=""
 # 2 – Funktionsmodule laden / Load function modules
 ################################################################################
 
-# shellcheck source=./translation.func
-source "$(dirname "$0")/translation.func"
-load_translations
-
 # shellcheck source=./logging.func
 source "$(dirname "$0")/logging.func"
 trap 'log_error "FEHLER in Zeile $LINENO / ERROR at line $LINENO"; exit 2' ERR
+
+# shellcheck source=./translation.func
+set +ux
+source "$(dirname "$0")/translation.func"
+load_translations
+log "Sprache geladen: $LANGCODE"
+log "MSG[mode_title]: '${MSG[mode_title]}'"
 
 for func in security dialogs cli input network ssh container system dotfiles summary; do
     # shellcheck source=./$func.func
     source "$(dirname "$0")/$func.func"
 done
 
+set -u
+
 ################################################################################
 # 3 – Hauptablauf / Main workflow
 ################################################################################
 
 main() {
+    log "PARAM_DRYRUN ist: ${PARAM_DRYRUN:-nicht gesetzt}"
     parse_args "$@"
+    log "Parse args abgeschlossen"
     check_root
+    log "check root abgeschlossen"
     check_bash_version
+    log "check_bash_version abgeschlossen"
     check_required_tools
+    log "check_required_tools abgeschlossen"
     check_directory_exists "$TEMPLATE_PATH"
+    log "check_directory_exists abgeschlossen: $TEMPLATE_PATH"
     select_mode
+    log "select_mode abgeschlossen"
     find_next_ctid
-
+    log "find_next_ctid abgeschlossen: CT_ID=$CT_ID"
     input_hostname
+    log "input_hostname abgeschlossen: CT_HOSTNAME=$CT_HOSTNAME"
     input_password
+    log "input_password abgeschlossen: CT_PASSWORD=******"
     select_template
+    log "select_template abgeschlossen: TEMPLATE_FILE=$TEMPLATE_FILE"
     detect_ostype_from_template
+    log "detect_ostype_from_template abgeschlossen: OSTEMPLATE=$OSTEMPLATE, OSType=$OSType"
     input_rootfs_size
+    log "input_rootfs_size abgeschlossen: ROOTFS_SIZE=$ROOTFS_SIZE"
     input_resources
+    log "input_resources abgeschlossen: CT_CORES=$CT_CORES, CT_MEMORY=$CT_MEMORY"
     get_container_ip
-
+    log "get_container_ip abgeschlossen: CT_IPV4=$CT_IPV4, CT_IPV6=$CT_IPV6"
     ask_for_laptop_key_comment
+    log "ask_for_laptop_key_comment abgeschlossen: LAPTOP_KEY_COMMENT=$LAPTOP_KEY_COMMENT"
     extract_laptop_key
+    log "extract_laptop_key abgeschlossen: SSH_PUBKEY=${SSH_PUBKEY:-nicht gesetzt}"
 
     # Dry-Run? Dann Vorschau anzeigen und beenden
-    [[ "${1:-}" == "--dry-run" ]] && { dry_run_preview; exit 0; }
+    #[[ "${1:-}" == "--dry-run" ]] && { dry_run_preview; exit 0; }
+    if [[ "${PARAM_DRYRUN:-false}" == "true" ]]; then
+        dry_run_preview
+        exit 0
+    fi
+    log "Dry-Run abgeschlossen"
 
     prepare_ssh_key_prestart
+    log "prepare_ssh_key_prestart abgeschlossen: SSH_PUBKEY=${SSH_PUBKEY:-nicht gesetzt}"
     create_container
+    log "Container mit ID $CT_ID erstellt."
     finalize_ssh_key_after_start
+    log "finalize_ssh_key_after_start abgeschlossen: SSH_PUBKEY=${SSH_PUBKEY:-nicht gesetzt}"
     configure_locales
+    log "configure_locales abgeschlossen"
     update_container
+    log "update_container abgeschlossen"
     clone_dotfiles_in_container
+    log "clone_dotfiles_in_container abgeschlossen"
     print_summary
+    log "print_summary abgeschlossen"
 }
-
+set -x
 main "$@"
 
 
@@ -688,13 +720,13 @@ find . \
   -type f \( -name '*.sh' -o -name '*.func' \) -print | sort | while read -r f; do
     rel_path="${f#./}"
     # Header für jede Datei / Header for each file
-    echo "### $rel_path" >> "$OUTPUT"
-    echo >> "$OUTPUT"
-    # Dateiinhalt anhängen / Append file content
-    cat "$f" >> "$OUTPUT"
-    # Zwei Leerzeilen trennen die Dateien / Two blank lines separate files
-    echo >> "$OUTPUT"
-    echo >> "$OUTPUT"
+    {
+        echo "### $rel_path"
+        echo
+        cat "$f"
+        echo
+        echo
+    } >> "$OUTPUT"
 done
 
 echo "Fertig! Sammeldatei: $OUTPUT"
@@ -724,11 +756,14 @@ check_root() {
 }
 
 check_bash_version() {
+    if [[ -z "${BASH_VERSINFO[0]:-}" ]]; then
+        exit_with_log "BASH_VERSINFO nicht verfügbar – bitte Skript mit 'bash' ausführen."
+    fi
+
     local bash_major="${BASH_VERSINFO[0]}"
     local bash_minor="${BASH_VERSINFO[1]}"
     if (( bash_major < 4 )); then
-        log_error "Bash-Version $bash_major.$bash_minor zu alt – mindestens 4.0 erforderlich."
-        exit 1
+        exit_with_log "Bash-Version $bash_major.$bash_minor zu alt – mindestens 4.0 erforderlich."
     fi
 }
 
@@ -965,35 +1000,22 @@ update_container() {
 
 #!/usr/bin/env bash
 ###############################################################################
-# translation.func – Mehrsprachigkeit für Proxmox LXC-Container-Ersteller
-# Version:    2.7.5
+# translation.func – Mehrsprachigkeit für Proxmox LXC Creator
+# Version:    2.7.6
 # Datum:      2025-07-21
 #
-# Beschreibung (Deutsch):
-# Initialisiert das mehrsprachige Nachrichtensystem für den LXC-Installer.
-# Unterstützt Deutsch und Englisch. Alle Standard-Messages für Dialoge,
-# Logging und Fehlermeldungen werden über das assoziative Array MSG abgebildet.
-#
-# Description (English):
-# Initializes the multilingual message array for the LXC installer.
-# Supports German and English. All standard messages for dialogs,
-# logging, and error handling are defined in the associative MSG array.
-#
+# Dieses Modul initialisiert das assoziative Array MSG mit allen UI-Texten für
+# Deutsch und Englisch. Es wird innerhalb des Hauptskripts über load_translations
+# eingebunden. Eine vollständige Initialisierung aller Keys ist gewährleistet.
 ###############################################################################
 
 # shellcheck disable=SC2034
 declare -A MSG
 
-### Sprache interaktiv laden oder Englisch als Fallback setzen
+### Sprache laden: whiptail-Dialog, Fallback bei Fehler
 load_translations() {
-    if ! command -v whiptail &>/dev/null; then
-        echo "WARNUNG: 'whiptail' fehlt – Standard: Englisch" >&2
-        set_default_english
-        return
-    fi
-
-    if [[ ! -t 1 ]]; then
-        echo "WARNUNG: Kein Terminal erkannt – Standard: Englisch" >&2
+    if ! command -v whiptail &>/dev/null || [[ ! -t 1 ]]; then
+        echo "WARNUNG: Keine Terminalunterstützung – Standardsprache: Englisch" >&2
         set_default_english
         return
     fi
@@ -1005,16 +1027,11 @@ load_translations() {
 
     if [[ $? -ne 0 || -z "$lang" ]]; then
         whiptail --title "Abbruch / Cancelled" \
-            --msgbox "Keine Auswahl – Standard: Englisch." 8 60 || echo "Fallback: Englisch aktiviert."
+            --msgbox "Keine Auswahl – Standard: Englisch." 8 60 || echo "Fallback auf Englisch"
         set_default_english
-        return
-    fi
-    export LANGCODE="$lang"
-
-    if [[ "$lang" == "de" ]]; then
-        set_default_german
     else
-        set_default_english
+        export LANGCODE="$lang"
+        [[ "$lang" == "de" ]] && set_default_german || set_default_english
     fi
 }
 
@@ -1022,52 +1039,52 @@ load_translations() {
 # Deutsch
 ###############################################################################
 set_default_german() {
-    # --- Allgemein & Fehler ---
+    # Allgemein & Fehler
     MSG[abort]="Vorgang abgebrochen."
     MSG[input_empty]="Eingabe darf nicht leer sein."
     MSG[input_invalid]="Ungültige Eingabe. Bitte erneut versuchen."
 
-    # --- Root-Check ---
+    # Root-Check
     MSG[root_required]="Dieses Skript muss als root ausgeführt werden."
     MSG[root_ok]="Root-Rechte bestätigt."
 
-    # --- Moduswahl ---
-    MSG[mode_title]="Moduswahl"
+    # Moduswahl
+    MSG[mode_title]="Modusauswahl"
     MSG[choose_type]="Bitte Container-Modus wählen:"
     MSG[mode_single]="Einzeln"
     MSG[mode_cancel]="Abbrechen"
     MSG[desc_single]="Einen einzelnen Container anlegen"
     MSG[mode_selected_single]="Einzelmodus gewählt."
 
-    # --- Hostname, Passwort, CT-ID ---
+    # Hostname, Passwort, CT-ID
     MSG[hostname]="Hostname für den Container eingeben:"
     MSG[password]="Root-Passwort (min. 8 Zeichen):"
     MSG[ctid_prompt]="Container-ID eingeben:"
     MSG[ctid_assigned]="Vergebene Container-ID:"
     MSG[ctid_none]="Keine freie CT-ID gefunden!"
 
-    # --- Template & OS ---
+    # Template & OS
     MSG[template_select]="Template auswählen:"
     MSG[template_none]="Keine Template-Dateien gefunden!"
     MSG[template_chosen]="Verwendetes Template: %s"
     MSG[ostype_detected]="OS-Typ erkannt:"
     MSG[ostype_unknown]="Fehler: OS-Typ im Template-Dateinamen nicht erkannt."
 
-    # --- Ressourcen ---
+    # Ressourcen
     MSG[rootfs]="RootFS-Größe (GB)"
     MSG[cores]="CPU-Kerne"
     MSG[memory]="Arbeitsspeicher (MB)"
 
-    # --- Netzwerk / IP ---
+    # Netzwerk / IP-Adressen
     MSG[octet]="Letzte Stelle der IPv4-Adresse eingeben (z. B. 42):"
     MSG[ip_in_use]="Diese IP-Adresse ist bereits einem anderen Container zugewiesen!"
 
-    # --- Container-Erstellung ---
+    # Container-Erstellung
     MSG[creating]="Container wird erstellt..."
     MSG[created]="Container wurde erfolgreich erstellt."
     MSG[started]="Container wurde gestartet."
 
-    # --- SSH ---
+    # SSH
     MSG[ssh_comment_prompt]="SSH-Key-Kommentar eingeben (z. B. user@laptop):"
     MSG[ssh_lookup]="Suche SSH-Key mit Kommentar"
     MSG[ssh_found]="SSH-Key wurde erkannt und übernommen."
@@ -1075,7 +1092,7 @@ set_default_german() {
     MSG[ssh_setup]="SSH-Key erfolgreich im Container gespeichert."
     MSG[ssh_temp]="Kein SSH-Key – Root-Login per Passwort bleibt aktiv."
 
-    # --- Systemkonfiguration ---
+    # Systemkonfiguration
     MSG[locales]="Locales und Systemsprachen werden installiert..."
     MSG[locales_ok]="Locales erfolgreich eingerichtet."
     MSG[locales_fail]="Fehler bei der Einrichtung der Locales!"
@@ -1083,34 +1100,35 @@ set_default_german() {
     MSG[timezone_ok]="Zeitzone erfolgreich gesetzt."
     MSG[timezone_fail]="Fehler beim Setzen der Zeitzone!"
 
-    # --- Systemupdate ---
+    # Systemupdate
     MSG[update]="Führe Systemupdate im Container durch..."
     MSG[update_ok]="Container erfolgreich aktualisiert."
     MSG[update_fail]="Systemupdate im Container fehlgeschlagen."
 
-    # --- Dotfiles ---
+    # Dotfiles
     MSG[dotfiles]="Dotfiles werden im Container geklont..."
     MSG[dotfiles_ok]="Dotfiles erfolgreich aktualisiert."
     MSG[dotfiles_fail]="Fehler beim Klonen der Dotfiles!"
 
-    # --- Vorschau ---
+    # Vorschau/Dry-Run
     MSG[preview]="[Vorschau] – Kein Container wird erstellt."
 }
+
 
 ###############################################################################
 # Englisch
 ###############################################################################
 set_default_english() {
-    # --- General & Errors ---
+    # General & Errors
     MSG[abort]="Operation aborted."
     MSG[input_empty]="Input must not be empty."
     MSG[input_invalid]="Invalid input. Please try again."
 
-    # --- Root check ---
+    # Root check
     MSG[root_required]="This script must be run as root."
     MSG[root_ok]="Root access confirmed."
 
-    # --- Mode selection ---
+    # Mode selection
     MSG[mode_title]="Mode selection"
     MSG[choose_type]="Select container mode:"
     MSG[mode_single]="Single"
@@ -1118,35 +1136,35 @@ set_default_english() {
     MSG[desc_single]="Create a single container"
     MSG[mode_selected_single]="Single mode selected."
 
-    # --- Hostname, Password, CT-ID ---
+    # Hostname, password, CT ID
     MSG[hostname]="Enter container hostname:"
     MSG[password]="Root password (min. 8 characters):"
     MSG[ctid_prompt]="Enter container ID:"
     MSG[ctid_assigned]="Assigned container ID:"
     MSG[ctid_none]="No free container ID found!"
 
-    # --- Template & OS ---
+    # Template & OS
     MSG[template_select]="Select template:"
     MSG[template_none]="No template files found!"
     MSG[template_chosen]="Selected template: %s"
     MSG[ostype_detected]="OS type detected:"
     MSG[ostype_unknown]="Error: OS type could not be determined from filename."
 
-    # --- Resources ---
+    # Resources
     MSG[rootfs]="Root filesystem size (GB)"
     MSG[cores]="CPU cores"
     MSG[memory]="Memory (MB)"
 
-    # --- Network / IP ---
+    # Network / IP
     MSG[octet]="Enter the last octet of the IPv4 address (e.g. 42):"
     MSG[ip_in_use]="This IP address is already assigned to another container!"
 
-    # --- Container creation ---
+    # Container creation
     MSG[creating]="Creating container..."
     MSG[created]="Container created successfully."
     MSG[started]="Container has been started."
 
-    # --- SSH ---
+    # SSH
     MSG[ssh_comment_prompt]="Enter comment of SSH public key (e.g. user@laptop):"
     MSG[ssh_lookup]="Looking for SSH key with comment"
     MSG[ssh_found]="SSH key found and applied."
@@ -1154,7 +1172,7 @@ set_default_english() {
     MSG[ssh_setup]="SSH key successfully saved to container."
     MSG[ssh_temp]="No valid SSH key – root login via password remains active."
 
-    # --- System configuration ---
+    # System configuration
     MSG[locales]="Installing system locales and languages..."
     MSG[locales_ok]="Locales successfully configured."
     MSG[locales_fail]="Locale configuration failed!"
@@ -1162,17 +1180,17 @@ set_default_english() {
     MSG[timezone_ok]="Timezone successfully set."
     MSG[timezone_fail]="Failed to set timezone in container!"
 
-    # --- System update ---
+    # System update
     MSG[update]="Running system update in container..."
     MSG[update_ok]="Container updated successfully."
     MSG[update_fail]="System update failed in container."
 
-    # --- Dotfiles ---
+    # Dotfiles
     MSG[dotfiles]="Cloning dotfiles inside the container..."
     MSG[dotfiles_ok]="Dotfiles updated successfully."
     MSG[dotfiles_fail]="Error cloning dotfiles inside the container!"
 
-    # --- Preview ---
+    # Preview / Dry-run
     MSG[preview]="[Preview] – No container will be created."
 }
 

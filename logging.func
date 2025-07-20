@@ -35,6 +35,7 @@ log_error() {
 ### Loggt Fehlermeldung und bricht Skript ab (DE/EN)
 ### Logs error message and exits script
 exit_with_log() {
-    log_error "$1"
+    local msg="${1:-[Unbekannter Fehler/Unknown error]}"
+    log_error "$msg"
     exit 1
 }
