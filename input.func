@@ -141,16 +141,28 @@ select_mode() {
 
 ### Nächste freie LXC-Container-ID finden
 ### Find next free LXC container ID
+#find_next_ctid() {
+#    local last_id
+#    last_id=$(pct list | awk 'NR>1 {print $1}' | sort -n | tail -n1)
+#    if [[ -z "$last_id" ]]; then
+#        CT_ID=100
+#    else
+#        CT_ID=$((last_id + 1))
+#    fi
+#    log "${MSG[ctid_assigned]} $CT_ID"
+#}
+
 find_next_ctid() {
-    local last_id
-    last_id=$(pct list | awk 'NR>1 {print $1}' | sort -n | tail -n1)
-    if [[ -z "$last_id" ]]; then
-        CT_ID=100
-    else
-        CT_ID=$((last_id + 1))
-    fi
-    log "${MSG[ctid_assigned]} $CT_ID"
+    for id in $(seq 100 999); do
+        if ! pct status "$id" &>/dev/null; then
+            CT_ID="$id"
+            log "${MSG[ctid_assigned]} $CT_ID"
+            return
+        fi
+    done
+    exit_with_log "Keine freie Container-ID im Bereich 100–999 gefunden."
 }
+
 
 ### OS-Typ aus Template-Filename bestimmen
 ### Detect OSType automatically from selected template filename
